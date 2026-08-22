@@ -22,7 +22,7 @@ Cada ferramenta fala um dialeto:
 | [Immersive Terminal](https://github.com/flippelt/Immersive-Terminal-for-RPGs) | `scenario.json` + arquivos no VFS (com frontmatter de lock/crack) |
 | [guild-briefings](https://github.com/flippelt/guild-briefings) | `briefing.json` (party, quests, recaps) |
 | [lancer-briefings](https://github.com/flippelt/lancer-briefings) | Markdown de missões e eventos |
-| mesa-press | Markdown de handout (`letter` / `poster` / `dataslate`) |
+| mesa-press | Markdown de handout (`letter` / `poster` / `dataslate` / `plate` / `telegram` / `dossier` / `edict` / `newspaper` / `ticket`) |
 
 Manter tudo isso na mão diverge. O **session-kit** é o motor: um kit YAML na
 entrada, uma pasta de artefatos na saída.

@@ -176,7 +176,7 @@ export const KitSchema = z.object({
   handouts: z
     .array(
       z.object({
-        template: z.enum(['letter', 'poster', 'dataslate']),
+        template: z.enum(['letter', 'poster', 'dataslate', 'plate', 'telegram', 'dossier', 'edict', 'newspaper', 'ticket']),
         slug: idString,
         title: z.string().min(1),
         size: z.enum(['a5', 'a6']).optional(),
