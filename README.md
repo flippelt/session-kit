@@ -7,6 +7,8 @@ Um YAML de **sessão** vira os formatos das ferramentas de RPG do Felipe.
 Você descreve o encontro **uma vez**; o compilador emite os artefatos que cada
 app já consome.
 
+> **Repo privado.** Clone só com acesso à conta `flippelt`.
+>
 > ⚠️ **Status:** MVP (`v0.1.0`). A API do kit e dos emissores pode mudar.
 
 ## Por quê
@@ -25,19 +27,18 @@ Cada ferramenta fala um dialeto:
 Manter tudo isso na mão diverge. O **session-kit** é o motor: um kit YAML na
 entrada, uma pasta de artefatos na saída.
 
-## Conteúdo de mesa é privado
+## Onde fica o conteúdo da mesa
 
-Este repositório é o **compilador**, não o cofre da mesa.
-
-Campanhas reais (personagens, missões, lore da mesa) vivem nos repos **privados**:
+Este repositório é **privado**: o compilador e, se quiser, os kits YAML da
+mesa podem viver aqui. Os artefatos gerados ainda vão para os apps privados:
 
 - `contracontrol` — GM Control Room da mesa
 - `contracodex` — campaign-codex da mesa
 - `rpgterm` — Immersive Terminal da mesa
 - `guild-briefings-mesa` — briefings da mesa
 
-Os exemplos daqui são **demos públicas** (Valdoran / Cerco de Pedravale, já
-visíveis no campaign-codex). Não coloque conteúdo de mesa neste repo.
+`examples/valdoran-cerco` é só a demo do Cerco de Pedravale (já pública no
+campaign-codex). Kits reais não precisam imitar essa pasta.
 
 ## Instalação
 
