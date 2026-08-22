@@ -1,0 +1,56 @@
+{
+  "name": "session-kit",
+  "version": "0.1.0",
+  "description": "Compilador de um YAML de sessão para as ferramentas de RPG de mesa (GMCR, campaign-codex, ITR, guild-briefings, lancer-briefings, mesa-press).",
+  "type": "module",
+  "license": "MIT",
+  "author": "Felipe Lippelt",
+  "private": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "session-kit": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flippelt/session-kit.git"
+  },
+  "homepage": "https://github.com/flippelt/session-kit#readme",
+  "bugs": "https://github.com/flippelt/session-kit/issues",
+  "keywords": [
+    "ttrpg",
+    "rpg",
+    "yaml",
+    "cli",
+    "compiler"
+  ],
+  "dependencies": {
+    "yaml": "^2.9.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}
