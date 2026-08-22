@@ -1,0 +1,162 @@
+id: valdoran-cerco
+title: O Cerco de Pedravale
+system: dnd5e-2014
+genre: fantasy
+era:
+  startYear: 0
+  label: Inverno do 12º ano
+campaign:
+  id: valdoran
+  name: As Crônicas de Valdoran
+  theme: fantasy
+  emoji: ⚔️
+  summary: Um reino dividido pela Grande Fenda. Magia antiga desperta enquanto casas nobres disputam o trono vazio.
+  order: 2
+date: Inverno do 12º ano
+location: Muralha de Pedravale
+
+scenes:
+  - id: muralha-noite
+    name: A Muralha à Noite
+    treatment:
+      kind: text
+      variant: scroll
+      text: |
+        No auge do inverno, uma maré de criaturas da Fenda se lançou contra a Muralha de Pedravale. Por uma noite inteira, os Vigias seguraram.
+
+        As tochas verdes da borda se apagaram — sinal de que algo grande vinha.
+  - id: tochas-verdes
+    name: Tochas da Borda
+    treatment:
+      kind: color
+      color: "#1a2e14"
+      label: As tochas verdes se apagam
+  - id: brecha-leste
+    name: A Brecha
+    treatment:
+      kind: color
+      color: "#3a0606"
+      label: A muralha leste foi rompida
+
+entries:
+  - type: events
+    slug: cerco-de-pedravale
+    title: O Cerco de Pedravale
+    emoji: 🏰
+    summary: A noite em que a muralha quase caiu — e o reino soube que a Fenda avançava.
+    date: Inverno do 12º ano
+    location: Muralha de Pedravale
+    tags: [batalha, fenda, virada]
+    order: 1
+    body: |
+      No auge do inverno, uma maré de criaturas da **Fenda** se lançou contra a
+      **Muralha de Pedravale**. Por uma noite inteira, os Vigias seguraram. 🛡️
+
+      1. As tochas verdes da borda se apagaram — sinal de que algo grande vinha.
+      2. A muralha leste foi rompida; **Lyra** liderou a retomada pelos túneis.
+      3. Ao amanhecer, a Fenda recuou — mas deixara sua marca **um passo mais perto**.
+
+      Desde então, ninguém duvida: a Fenda **cresce**.
+  - type: npcs
+    slug: mestre-corvo
+    title: Mestre Corvo
+    emoji: 🐦‍⬛
+    summary: Conselheiro arcano da corte de Pedravale. Guarda segredos sobre a Fenda.
+    status: vivo
+    role: Conselheiro Arcano
+    faction: Casa Pedravale
+    tags: [mago, conselheiro, misterioso]
+    order: 1
+    body: |
+      **Mestre Corvo** serve à Casa Pedravale há três gerações — tempo demais para um
+      homem comum. Veste-se de negro e raramente revela o que sabe. 🪶
+
+      - Estuda a Grande Fenda desde o dia em que se abriu.
+      - Sabe que a magia do reino está **mudando** — e por quê.
+      - **Gancho:** precisa dos aventureiros para recuperar um artefato da borda da Fenda.
+
+parties:
+  - id: vigias
+    name: Vigias de Pedravale
+
+party:
+  - id: lyra
+    name: Lyra Pedravale
+    race: Humana
+    classes:
+      - name: Patrulheira
+        level: 5
+        subclass: Caçadora
+    level: 5
+    partyId: vigias
+    player: demo
+    source: manual
+    backstory: Herdeira relutante da Casa Pedravale e arqueira da Vigília. Preferia a muralha à corte.
+
+quests:
+  - id: artefato-da-borda
+    title: O Artefato da Borda
+    objective: Recuperar o artefato que Mestre Corvo precisa na borda da Fenda.
+    status: ativa
+    partyId: vigias
+    reward: A gratidão da corte — e talvez uma verdade que Pedravale não quer ouvir.
+
+briefing:
+  kind: guild
+  guildName: Casa Pedravale
+  bootTitle: PEDRAVALE
+  crest: fleur
+
+terminal:
+  theme: ibm
+  id: vigilia
+  name: Estação da Vigília
+  motd:
+    - VIGILIA DE PEDRAVALE — REGISTRO DA MURALHA
+    - "last user: CORVO, M.  //  turno: inverno 12"
+    - ""
+    - "type `help` for commands. start with `cat orders.md`."
+    - ""
+  commands:
+    ver:
+      - VIGILIA-OS
+      - Versão 1.0
+  files:
+    - path: orders.md
+      content: |
+        # ORDENS DA VIGÍLIA
+
+        1. Manter as tochas da borda acesas.
+        2. Qualquer silêncio na muralha leste é alarme.
+        3. Relatar ao Conselheiro ao amanhecer.
+
+        O selo da corte está em `sealed.dat`.
+    - path: sealed.dat
+      content: |
+        SELO DO CONSELHEIRO — OLHOS DA CORTE
+
+        O artefato pulsa no mesmo ritmo da Fenda.
+        Não mostrar este registro aos nobres.
+
+        — M. Corvo
+      locked: true
+      password: FENDA-12
+      crackable: true
+      crackDC: 12
+
+handouts:
+  - template: letter
+    slug: carta-mestre-corvo
+    title: Missiva do Conselheiro
+    size: a5
+    from: Mestre Corvo
+    to: Vigias de Pedravale
+    date: Inverno do 12º ano
+    seal: pedravale
+    body: |
+      Vigias,
+
+      A Fenda avançou um passo na noite do cerco. Tragam o que restar do artefato
+      da borda — sem ele, não leio o que a cicatriz está dizendo.
+
+      — Mestre Corvo, Conselheiro Arcano da Casa Pedravale
