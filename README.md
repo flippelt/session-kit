@@ -3,17 +3,18 @@
 [![CI](https://github.com/flippelt/session-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/flippelt/session-kit/actions/workflows/ci.yml)
 [![license](https://img.shields.io/github/license/flippelt/session-kit)](./LICENSE)
 
-Um YAML de **sessão** vira os formatos das ferramentas de RPG do Felipe.
-Você descreve o encontro **uma vez**; o compilador emite os artefatos que cada
-app já consome.
+Compilador de sessão para RPG de mesa. Um YAML descreve o encontro; o CLI
+emite os formatos nativos de várias ferramentas (painel do mestre, wiki da
+campanha, briefing da party, terminal imersivo, missões Lancer, handouts
+para impressão).
 
-> **Repo privado.** Clone só com acesso à conta `flippelt`.
->
-> ⚠️ **Status:** MVP (`v0.1.0`). A API do kit e dos emissores pode mudar.
+Você descreve a sessão **uma vez**. O compilador gera a árvore de arquivos
+que cada app já consome. Copie o que quiser para o repositório da ferramenta
+correspondente — o kit não publica nem faz deploy.
 
-## Por quê
+> ⚠️ **Status:** MVP (`v0.1.0`). A forma do kit e dos emissores pode mudar.
 
-Cada ferramenta fala um dialeto:
+## O que emite
 
 | Ferramenta | Formato nativo |
 | ---------- | -------------- |
@@ -22,23 +23,10 @@ Cada ferramenta fala um dialeto:
 | [Immersive Terminal](https://github.com/flippelt/Immersive-Terminal-for-RPGs) | `scenario.json` + arquivos no VFS (com frontmatter de lock/crack) |
 | [guild-briefings](https://github.com/flippelt/guild-briefings) | `briefing.json` (party, quests, recaps) |
 | [lancer-briefings](https://github.com/flippelt/lancer-briefings) | Markdown de missões e eventos |
-| mesa-press | Markdown de handout (`letter` / `poster` / `dataslate` / `plate` / `telegram` / `dossier` / `edict` / `newspaper` / `ticket`) |
+| [mesa-press](https://github.com/flippelt/mesa-press) | Markdown de handout (`letter` / `poster` / `dataslate` / `plate` / `telegram` / `dossier` / `edict` / `newspaper` / `ticket`) |
 
-Manter tudo isso na mão diverge. O **session-kit** é o motor: um kit YAML na
-entrada, uma pasta de artefatos na saída.
-
-## Onde fica o conteúdo da mesa
-
-Este repositório é **privado**: o compilador e, se quiser, os kits YAML da
-mesa podem viver aqui. Os artefatos gerados ainda vão para os apps privados:
-
-- `contracontrol` — GM Control Room da mesa
-- `contracodex` — campaign-codex da mesa
-- `rpgterm` — Immersive Terminal da mesa
-- `guild-briefings-mesa` — briefings da mesa
-
-`examples/valdoran-cerco` é só a demo do Cerco de Pedravale (já pública no
-campaign-codex). Kits reais não precisam imitar essa pasta.
+Manter esses dialetos na mão diverge. O **session-kit** é a fonte única:
+um kit YAML na entrada, uma pasta de artefatos na saída.
 
 ## Instalação
 
@@ -66,13 +54,6 @@ são erro.
 
 A compilação imprime a lista de arquivos gerados (caminhos relativos a `--out`).
 
-Exemplo público:
-
-```bash
-session-kit validate examples/valdoran-cerco/kit.yaml
-session-kit compile examples/valdoran-cerco/kit.yaml --out dist/
-```
-
 ## Emissores
 
 | Chave | Saída | Quando escreve |
@@ -86,15 +67,32 @@ session-kit compile examples/valdoran-cerco/kit.yaml --out dist/
 
 `--emit gmcr` gera só o JSON do GMCR; não toca em `codex/` nem no resto.
 
-## Kit YAML (visão geral)
+## Kit YAML
 
 Campos obrigatórios: `id`, `title`, `campaign` (`id` + `name`). O resto é
 opcional. Chaves extra são **ignoradas** (não derrubam a validação).
 
-Blocos úteis:
+Kit mínimo:
+
+```yaml
+id: encontro-01
+title: O encontro
+campaign:
+  id: campanha
+  name: Nome da campanha
+```
+
+Campos de contexto (todos opcionais):
+
+- `system` — identificador livre (`dnd5e-2014`, `lancer`, …)
+- `genre` — `fantasy` · `cosmic-horror` · `sci-fi` · `modern` · `post-apocalyptic` · `generic`
+- `era.startYear` / `era.label`
+- `date`, `location`
+
+Blocos de conteúdo:
 
 - `scenes[]` — tratamentos `text` / `color` / `image` / `crt` (iguais ao GMCR)
-- `entries[]` — lore, npcs, characters, events, maps (codex)
+- `entries[]` — `lore` · `npcs` · `characters` · `events` · `maps` (codex)
 - `quests[]`, `parties[]`, `party[]`, `briefing` — guild-briefings
 - `terminal` — cenário ITR (arquivos com `locked` / `crackable` / `password`)
 - `handouts[]` — mesa-press
@@ -105,6 +103,30 @@ alfanuméricos viram `-`.
 
 Caminhos de arquivo do terminal (`terminal.files[].path`) não podem sair do
 diretório do cenário (`../x` é rejeitado).
+
+## Exemplo
+
+`examples/valdoran-cerco` é um kit de demonstração completo (Cerco de
+Pedravale). Qualquer campanha segue o mesmo schema — o exemplo não é um
+template obrigatório.
+
+```bash
+session-kit validate examples/valdoran-cerco/kit.yaml
+session-kit compile examples/valdoran-cerco/kit.yaml --out dist/
+```
+
+## Como biblioteca
+
+```ts
+import { compileKit, loadKitFile } from 'session-kit'
+
+const kit = loadKitFile('kit.yaml')
+const files = compileKit(kit) // todos os emissores
+const soGmcr = compileKit(kit, ['gmcr'])
+```
+
+Cada item de `files` tem `path` (relativo) e `content` (UTF-8). Para gravar
+no disco, use `writeCompile(kit, outDir, emit?)`.
 
 ## Desenvolvimento
 
