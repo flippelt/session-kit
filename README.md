@@ -1,10 +1,10 @@
 # session-kit
 
 [![CI](https://github.com/flippelt/session-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/flippelt/session-kit/actions/workflows/ci.yml)
-[![license](https://img.shields.io/github/license/flippelt/session-kit)](./LICENSE)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 Compilador de sessão para RPG de mesa. Um YAML descreve o encontro; o CLI
-emite os formatos nativos de várias ferramentas (painel do mestre, wiki da
+emite os formatos nativos das ferramentas irmãs (painel do mestre, wiki da
 campanha, briefing da party, terminal imersivo, missões Lancer, handouts
 para impressão).
 
@@ -14,10 +14,10 @@ correspondente — o kit não publica nem faz deploy.
 
 > ⚠️ **Status:** MVP (`v0.1.0`). A forma do kit e dos emissores pode mudar.
 
-## O que emite
+## Repos irmãos
 
-| Ferramenta | Formato nativo |
-| ---------- | -------------- |
+| Repositório | Formato nativo |
+| ----------- | -------------- |
 | [GM Control Room](https://github.com/flippelt/gm-control-room) | JSON de campanha (`scenes`, `genre`, `era`) |
 | [campaign-codex](https://github.com/flippelt/campaign-codex) | Markdown + frontmatter em `campaigns/` e `entries/` |
 | [Immersive Terminal](https://github.com/flippelt/Immersive-Terminal-for-RPGs) | `scenario.json` + arquivos no VFS (com frontmatter de lock/crack) |
@@ -30,11 +30,9 @@ um kit YAML na entrada, uma pasta de artefatos na saída.
 
 ## Instalação
 
-Node **≥ 22**.
+Node **≥ 22**. Na raiz do repositório:
 
 ```bash
-git clone https://github.com/flippelt/session-kit.git
-cd session-kit
 npm ci
 npm run build
 ```
