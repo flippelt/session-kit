@@ -30,9 +30,11 @@ um kit YAML na entrada, uma pasta de artefatos na saída.
 
 ## Instalação
 
-Node **≥ 22**. Na raiz do repositório:
+Node **≥ 22**.
 
 ```bash
+git clone https://github.com/flippelt/session-kit.git
+cd session-kit
 npm ci
 npm run build
 ```
