@@ -47,12 +47,34 @@ O binário `session-kit` aponta para `dist/cli.js`.
 session-kit validate path/to/kit.yaml
 session-kit compile path/to/kit.yaml --out dist/
 session-kit compile path/to/kit.yaml --out dist/ --emit gmcr,codex,itr,briefing,lancer,press
+session-kit edit path/to/kit.yaml
+session-kit new campanha/encontro-01
 ```
 
 Sem `--emit`, **todos** os emissores rodam. Chaves desconhecidas em `--emit`
 são erro.
 
 A compilação imprime a lista de arquivos gerados (caminhos relativos a `--out`).
+
+## Editor (sem YAML)
+
+O schema do kit tem muitos blocos. Quem não quiser preenchê-lo à mão usa o
+formulário local:
+
+```bash
+session-kit edit examples/valdoran-cerco/kit.yaml
+session-kit new minha-campanha/encontro-01
+```
+
+`edit` abre o navegador em `127.0.0.1`. Se o caminho é uma **pasta** (ou
+omitido, e existe `kits/`), o catálogo lista todas as sessões: as antigas
+ficam **travadas** até o botão Editar; cada sessão e cada item é colapsável,
+separado em etapas. `new` cria `<dir>/kit.yaml` e abre já destravado.
+`--create` no `edit` cria o arquivo se ele ainda não existir; `--no-open` só
+imprime a URL (útil em teste).
+
+O YAML continua sendo a fonte que o compilador lê. O formulário só evita que
+você precise conhecê-lo.
 
 ## Emissores
 
