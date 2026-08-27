@@ -1,6 +1,7 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { openBrowser, startAuthorServer } from './author/server.js'
+import { relToRoot } from './author/workspace.js'
 import { parseEmitList, writeCompile } from './compile.js'
 import { dumpKit, kitFromDir, kitFromPath } from './dump.js'
 import { KitError } from './errors.js'
@@ -12,15 +13,16 @@ Uso:
   session-kit validate <kit.yaml>
   session-kit compile <kit.yaml> --out <dir>
   session-kit compile <kit.yaml> --out <dir> --emit gmcr,codex,itr,briefing,lancer,press
-  session-kit edit <kit.yaml> [--create] [--port N] [--no-open]
+  session-kit edit [kit.yaml|pasta] [--create] [--port N] [--no-open]
   session-kit new <dir> [--port N] [--no-open]
 
 validate / compile leem o YAML. Sem --emit, todos os emissores rodam.
 Chaves desconhecidas em --emit são erro.
 
-edit abre um formulário no navegador e grava o YAML. Quem não quiser
-mexer no arquivo à mão usa isso. --create cria o arquivo se não existir.
-new cria <dir>/kit.yaml (a partir do nome das pastas) e abre o editor.
+edit abre o formulário no navegador. Pasta (ou kits/ se omitir o
+caminho) lista todas as sessões: as antigas ficam travadas até Editar.
+Arquivo abre só aquele kit. --create cria o YAML se não existir.
+new cria <dir>/kit.yaml e abre o catálogo (ou o arquivo) já destrava.
 
 Emissores:
   gmcr       gmcr/<id>.json
@@ -35,7 +37,7 @@ export type CliRequest =
   | { cmd: 'help' }
   | { cmd: 'validate'; file: string }
   | { cmd: 'compile'; file: string; out: string; emit?: string }
-  | { cmd: 'edit'; file: string; create: boolean; port?: number; open: boolean }
+  | { cmd: 'edit'; file?: string; create: boolean; port?: number; open: boolean }
   | { cmd: 'new'; dir: string; port?: number; open: boolean }
 
 export interface CliIo {
@@ -148,11 +150,13 @@ export function parseArgv(argv: string[]): CliRequest {
   }
 
   if (cmd === 'edit') {
-    if (!positional) throw new KitError('Informe o caminho do kit YAML.')
     if (out !== undefined || emit !== undefined) {
       throw new KitError('edit não aceita --out nem --emit.')
     }
-    return { cmd: 'edit', file: positional, create, open, ...(port !== undefined ? { port } : {}) }
+    if (create && !positional) {
+      throw new KitError('edit --create exige o caminho do kit YAML.')
+    }
+    return { cmd: 'edit', create, open, ...(positional ? { file: positional } : {}), ...(port !== undefined ? { port } : {}) }
   }
 
   if (!positional) throw new KitError('Informe o diretório do novo kit.')
@@ -171,24 +175,14 @@ function writeNewKit(file: string, fromDir?: string): void {
   writeFileSync(file, dumpKit(kit), 'utf8')
 }
 
-async function runAuthor(
-  file: string,
-  opts: { create?: boolean; port?: number; open: boolean },
+async function waitServer(
+  server: Awaited<ReturnType<typeof startAuthorServer>>,
   io: CliIo,
+  open: boolean,
 ): Promise<number> {
-  const kitPath = path.resolve(io.cwd, file)
-  if (!existsSync(kitPath)) {
-    if (!opts.create) {
-      throw new KitError(`Arquivo não encontrado: ${kitPath}. Use --create ou session-kit new.`)
-    }
-    writeNewKit(kitPath)
-  }
-
-  const server = await startAuthorServer({ file: kitPath, cwd: io.cwd, port: opts.port })
   io.stdout(`Editor: ${server.url}`)
-  io.stdout('Preencha o formulário no navegador. Ctrl+C ou Encerrar para sair.')
-  if (opts.open) openBrowser(server.url)
-
+  io.stdout('Sessões antigas ficam travadas até Editar. Ctrl+C ou Encerrar para sair.')
+  if (open) openBrowser(server.url)
   const stop = () => {
     void server.close()
   }
@@ -203,6 +197,44 @@ async function runAuthor(
   return 0
 }
 
+async function runAuthor(
+  file: string,
+  opts: { create?: boolean; port?: number; open: boolean; unlockRel?: string },
+  io: CliIo,
+): Promise<number> {
+  const kitPath = path.resolve(io.cwd, file)
+  let unlockRel = opts.unlockRel
+  if (!existsSync(kitPath)) {
+    if (!opts.create) {
+      throw new KitError(`Arquivo não encontrado: ${kitPath}. Use --create ou session-kit new.`)
+    }
+    writeNewKit(kitPath)
+    unlockRel = unlockRel ?? path.basename(kitPath)
+  }
+
+  const server = await startAuthorServer({
+    file: kitPath,
+    cwd: io.cwd,
+    port: opts.port,
+    unlockRel,
+  })
+  return waitServer(server, io, opts.open)
+}
+
+async function runAuthorRoot(
+  root: string,
+  opts: { port?: number; open: boolean; unlockRel?: string },
+  io: CliIo,
+): Promise<number> {
+  const server = await startAuthorServer({
+    root,
+    cwd: io.cwd,
+    port: opts.port,
+    unlockRel: opts.unlockRel,
+  })
+  return waitServer(server, io, opts.open)
+}
+
 export async function runCli(argv: string[], io: CliIo = defaultIo): Promise<number> {
   try {
     const req = parseArgv(argv)
@@ -212,13 +244,44 @@ export async function runCli(argv: string[], io: CliIo = defaultIo): Promise<num
     }
 
     if (req.cmd === 'edit') {
-      return await runAuthor(req.file, req, io)
+      const target = req.file ?? 'kits'
+      const abs = path.resolve(io.cwd, target)
+      if (existsSync(abs) && statSync(abs).isDirectory()) {
+        return await runAuthorRoot(abs, req, io)
+      }
+      return await runAuthor(target, req, io)
     }
     if (req.cmd === 'new') {
       const kitPath = path.join(path.resolve(io.cwd, req.dir), 'kit.yaml')
       writeNewKit(kitPath, req.dir)
       io.stdout(`Criado ${kitPath}`)
-      return await runAuthor(kitPath, { port: req.port, open: req.open, create: false }, io)
+      const kitsDir = path.join(io.cwd, 'kits')
+      const kitsAbs = path.resolve(kitsDir)
+      if (
+        existsSync(kitsDir) &&
+        statSync(kitsDir).isDirectory() &&
+        (kitPath === kitsAbs || kitPath.startsWith(kitsAbs + path.sep))
+      ) {
+        return await runAuthorRoot(
+          kitsDir,
+          {
+            port: req.port,
+            open: req.open,
+            unlockRel: relToRoot(kitsDir, kitPath),
+          },
+          io,
+        )
+      }
+      return await runAuthor(
+        kitPath,
+        {
+          port: req.port,
+          open: req.open,
+          create: false,
+          unlockRel: path.basename(kitPath),
+        },
+        io,
+      )
     }
 
     const kitPath = path.resolve(io.cwd, req.file)

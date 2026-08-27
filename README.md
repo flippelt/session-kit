@@ -66,10 +66,12 @@ session-kit edit examples/valdoran-cerco/kit.yaml
 session-kit new minha-campanha/encontro-01
 ```
 
-`edit` abre o navegador em `127.0.0.1`, carrega o kit e grava o YAML no mesmo
-arquivo. `new` cria `<dir>/kit.yaml` (id/campanha saem dos nomes das pastas) e
-abre o editor. `--create` no `edit` cria o arquivo se ele ainda não existir;
-`--no-open` só imprime a URL (útil em teste).
+`edit` abre o navegador em `127.0.0.1`. Se o caminho é uma **pasta** (ou
+omitido, e existe `kits/`), o catálogo lista todas as sessões: as antigas
+ficam **travadas** até o botão Editar; cada sessão e cada item é colapsável,
+separado em etapas. `new` cria `<dir>/kit.yaml` e abre já destravado.
+`--create` no `edit` cria o arquivo se ele ainda não existir; `--no-open` só
+imprime a URL (útil em teste).
 
 O YAML continua sendo a fonte que o compilador lê. O formulário só evita que
 você precise conhecê-lo.

@@ -3,10 +3,18 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import http from 'node:http'
 import path from 'node:path'
 import { writeCompile } from '../compile.js'
-import { dumpKit, kitFromPath, kitFromUnknown } from '../dump.js'
+import { dumpKit, kitFromUnknown } from '../dump.js'
 import { KitError } from '../errors.js'
 import { loadKitFile } from '../load.js'
 import type { Kit } from '../schema.js'
+import {
+  kitForNewRel,
+  loadSession,
+  loadWorkspace,
+  newKitRel,
+  relToRoot,
+  resolveKitRel,
+} from './workspace.js'
 
 const PAGE = readFileSync(new URL('./page.html', import.meta.url), 'utf8')
 const MAX_BODY = 2_000_000
@@ -19,20 +27,12 @@ export interface AuthorServer {
 }
 
 export interface AuthorOptions {
-  file: string
   cwd: string
+  file?: string
+  root?: string
+  unlockRel?: string
   port?: number
   host?: string
-}
-
-function loadCurrent(file: string): { kit: Kit; warning?: string } {
-  if (!existsSync(file)) return { kit: kitFromPath(file) }
-  try {
-    return { kit: loadKitFile(file) }
-  } catch (e) {
-    const warning = e instanceof Error ? e.message : String(e)
-    return { kit: kitFromPath(file), warning }
-  }
 }
 
 function send(res: http.ServerResponse, status: number, body: unknown, type = 'application/json; charset=utf-8'): void {
@@ -62,10 +62,10 @@ function readBody(req: http.IncomingMessage): Promise<string> {
   })
 }
 
-function saveKit(file: string, raw: unknown): Kit {
+function saveTo(abs: string, raw: unknown): Kit {
   const kit = kitFromUnknown(raw)
-  mkdirSync(path.dirname(file), { recursive: true })
-  writeFileSync(file, dumpKit(kit), 'utf8')
+  mkdirSync(path.dirname(abs), { recursive: true })
+  writeFileSync(abs, dumpKit(kit), 'utf8')
   return kit
 }
 
@@ -77,14 +77,24 @@ export function openBrowser(url: string): void {
 }
 
 export async function startAuthorServer(opts: AuthorOptions): Promise<AuthorServer> {
-  const file = path.resolve(opts.cwd, opts.file)
   const host = opts.host ?? '127.0.0.1'
   const requestedPort = opts.port ?? 0
+  const singleFile = opts.file ? path.resolve(opts.cwd, opts.file) : undefined
+  const root = path.resolve(opts.cwd, opts.root ?? (singleFile ? path.dirname(singleFile) : '.'))
+  const mode: 'single' | 'catalog' = singleFile ? 'single' : 'catalog'
+  const unlocked = new Set<string>()
+  if (opts.unlockRel) unlocked.add(opts.unlockRel)
 
   let settleClosed: () => void
   const closed = new Promise<void>((resolve) => {
     settleClosed = resolve
   })
+
+  function absForRel(rel: string | undefined): string {
+    if (singleFile) return singleFile
+    if (!rel) throw new KitError('Informe o caminho relativo do kit (rel).')
+    return resolveKitRel(root, rel)
+  }
 
   const server = http.createServer((req, res) => {
     void handle(req, res)
@@ -99,28 +109,60 @@ export async function startAuthorServer(opts: AuthorOptions): Promise<AuthorServ
         send(res, 200, PAGE, 'text/html; charset=utf-8')
         return
       }
-      if (method === 'GET' && url.pathname === '/api/kit') {
-        const current = loadCurrent(file)
+      if (method === 'GET' && url.pathname === '/api/workspace') {
         send(res, 200, {
-          path: file,
+          mode,
+          root,
+          sessions: loadWorkspace(root, singleFile, unlocked),
+        })
+        return
+      }
+      if (method === 'GET' && url.pathname === '/api/kit') {
+        const current = loadWorkspace(root, singleFile, unlocked)[0]
+        if (!current) {
+          send(res, 404, { error: 'Nenhum kit neste diretório.' })
+          return
+        }
+        send(res, 200, {
+          path: current.path,
+          rel: current.rel,
           kit: current.kit,
           warning: current.warning,
+          startUnlocked: current.startUnlocked,
         })
         return
       }
       if (method === 'PUT' && url.pathname === '/api/kit') {
-        const body = JSON.parse(await readBody(req)) as { kit?: unknown }
-        const kit = saveKit(file, body.kit)
-        send(res, 200, { ok: true, kit, path: file })
+        const body = JSON.parse(await readBody(req)) as { kit?: unknown; rel?: string }
+        const abs = absForRel(body.rel)
+        const kit = saveTo(abs, body.kit)
+        send(res, 200, { ok: true, kit, path: abs, rel: relToRoot(root, abs) })
+        return
+      }
+      if (method === 'POST' && url.pathname === '/api/kits') {
+        if (mode === 'single') {
+          throw new KitError('Este editor está aberto num arquivo só. Use session-kit edit <pasta> para o catálogo.')
+        }
+        const body = JSON.parse(await readBody(req)) as { dir?: string }
+        if (!body.dir) throw new KitError('Informe dir (campanha/encontro).')
+        const rel = newKitRel(body.dir)
+        const abs = resolveKitRel(root, rel)
+        if (existsSync(abs)) throw new KitError(`Já existe: ${rel}`)
+        const kit = kitForNewRel(rel)
+        mkdirSync(path.dirname(abs), { recursive: true })
+        writeFileSync(abs, dumpKit(kit), 'utf8')
+        unlocked.add(rel)
+        send(res, 200, { ok: true, session: loadSession(root, abs, true) })
         return
       }
       if (method === 'POST' && url.pathname === '/api/compile') {
         const bodyRaw = await readBody(req)
-        const body = bodyRaw ? (JSON.parse(bodyRaw) as { kit?: unknown; out?: string }) : {}
-        const kit = body.kit !== undefined ? saveKit(file, body.kit) : loadKitFile(file)
+        const body = bodyRaw ? (JSON.parse(bodyRaw) as { kit?: unknown; rel?: string; out?: string }) : {}
+        const abs = absForRel(body.rel)
+        const kit = body.kit !== undefined ? saveTo(abs, body.kit) : loadKitFile(abs)
         const outDir = path.resolve(opts.cwd, body.out?.trim() || path.join('dist', kit.id))
         const files = await writeCompile(kit, outDir)
-        send(res, 200, { ok: true, files, out: outDir, kit })
+        send(res, 200, { ok: true, files, out: outDir, kit, rel: relToRoot(root, abs) })
         return
       }
       if (method === 'POST' && url.pathname === '/api/shutdown') {

@@ -40,6 +40,14 @@ describe('parseArgv edit/new', () => {
       open: false,
     })
   })
+
+  it('edit sem caminho abre o catálogo', () => {
+    expect(parseArgv(['edit', '--no-open'])).toEqual({
+      cmd: 'edit',
+      create: false,
+      open: false,
+    })
+  })
 })
 
 describe('author server', () => {
@@ -83,6 +91,49 @@ describe('author server', () => {
       await expect(readFile(path.join(result.out, 'gmcr/valdoran-cerco.json'), 'utf8')).resolves.toMatch(
         /valdoran-cerco/,
       )
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('catálogo lista sessões e cria uma nova', async () => {
+    const dir = await tempDir()
+    const a = path.join(dir, 'mirrus', 'um', 'kit.yaml')
+    const b = path.join(dir, 'lancer', 'dois', 'kit.yaml')
+    const { mkdir } = await import('node:fs/promises')
+    await mkdir(path.dirname(a), { recursive: true })
+    await mkdir(path.dirname(b), { recursive: true })
+    await writeFile(a, await readFile(exampleKitPath, 'utf8'))
+    await writeFile(
+      b,
+      'id: a-descida\ntitle: A Descida\ncampaign:\n  id: lancer\n  name: Lancer\n',
+    )
+
+    const server = await startAuthorServer({ root: dir, cwd: dir, port: 0 })
+    try {
+      const page = await fetch(server.url)
+      const html = await page.text()
+      expect(html).toMatch(/Travada|etapas|Editar/)
+
+      const ws = await fetch(new URL('/api/workspace', server.url))
+      const body = (await ws.json()) as {
+        mode: string
+        sessions: Array<{ rel: string; startUnlocked: boolean; kit: { id: string } }>
+      }
+      expect(body.mode).toBe('catalog')
+      expect(body.sessions.map((s) => s.kit.id).sort()).toEqual(['a-descida', 'valdoran-cerco'])
+      expect(body.sessions.every((s) => s.startUnlocked === false)).toBe(true)
+
+      const created = await fetch(new URL('/api/kits', server.url), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ dir: 'mirrus/nova' }),
+      })
+      expect(created.status).toBe(200)
+      const made = (await created.json()) as { session: { rel: string; startUnlocked: boolean } }
+      expect(made.session.rel).toBe('mirrus/nova/kit.yaml')
+      expect(made.session.startUnlocked).toBe(true)
+      await expect(readFile(path.join(dir, 'mirrus/nova/kit.yaml'), 'utf8')).resolves.toMatch(/id: nova/)
     } finally {
       await server.close()
     }
