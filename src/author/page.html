@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>session-kit — editor</title>
+  <style>
+    :root {
+      --bg: #161412;
+      --bg-2: #211e1b;
+      --card: #2a2622;
+      --line: #3c3732;
+      --text: #f4eee6;
+      --muted: #b4a89a;
+      --accent: #d4a574;
+      --accent-2: #3d6b58;
+      --danger: #c45c4a;
+      --ok: #6fa37a;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 ui-sans-serif, system-ui, sans-serif; }
+    header {
+      position: sticky; top: 0; z-index: 5;
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+      padding: 12px 20px; background: #120f0e; border-bottom: 1px solid var(--line);
+    }
+    header .brand { font-weight: 700; letter-spacing: .02em; }
+    header .path { color: var(--muted); font-size: 12px; word-break: break-all; }
+    header .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    button, .btn {
+      appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--text);
+      padding: 8px 12px; border-radius: 8px; cursor: pointer; font: inherit;
+    }
+    button.primary { background: var(--accent); color: #1a140e; border-color: transparent; font-weight: 650; }
+    button.ghost { background: transparent; }
+    button.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+    button:hover { filter: brightness(1.08); }
+    #banner { margin: 12px 20px 0; padding: 10px 14px; border-radius: 8px; display: none; white-space: pre-wrap; }
+    #banner.ok { display: block; background: #1e3324; color: #c8e6cc; }
+    #banner.err { display: block; background: #3a1e1a; color: #f0c4bc; }
+    #banner.warn { display: block; background: #3a3018; color: #ead7a8; }
+    main { max-width: 980px; margin: 0 auto; padding: 16px 20px 80px; }
+    .hint { color: var(--muted); margin: 0 0 16px; }
+    details.block {
+      background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; padding: 4px 12px 12px;
+    }
+    details.block > summary {
+      cursor: pointer; font-weight: 650; padding: 12px 4px; list-style: none; display: flex; justify-content: space-between; gap: 12px;
+    }
+    details.block > summary::-webkit-details-marker { display: none; }
+    details.block > summary .count { color: var(--muted); font-weight: 500; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+    .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .field.wide { grid-column: 1 / -1; }
+    .field span { color: var(--muted); font-size: 12px; }
+    input, select, textarea {
+      width: 100%; background: #141210; color: var(--text); border: 1px solid var(--line);
+      border-radius: 8px; padding: 8px 10px; font: inherit;
+    }
+    textarea { min-height: 88px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+    .item {
+      background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-top: 10px;
+    }
+    .item-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .item-head strong { font-size: 13px; color: var(--accent); }
+    .item-head .tools { display: flex; gap: 6px; flex-wrap: wrap; }
+    .item-head .tools button { padding: 4px 8px; font-size: 12px; }
+    .check { display: flex; align-items: center; gap: 8px; color: var(--muted); padding-top: 18px; }
+    .check input { width: auto; }
+    .add { margin-top: 10px; }
+    .nested { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="brand">session-kit</div>
+      <div class="path" id="file-path">carregando…</div>
+    </div>
+    <div class="actions">
+      <button type="button" id="btn-save">Salvar YAML</button>
+      <button type="button" class="primary" id="btn-compile">Salvar e compilar</button>
+      <button type="button" class="ghost" id="btn-quit">Encerrar</button>
+    </div>
+  </header>
+  <div id="banner"></div>
+  <main id="app"></main>
+  <script>
+    (() => {
+      const app = document.getElementById('app');
+      const banner = document.getElementById('banner');
+      const pathEl = document.getElementById('file-path');
+      const GENRES = ['fantasy', 'cosmic-horror', 'sci-fi', 'modern', 'post-apocalyptic', 'generic'];
+      const ENTRY_TYPES = ['lore', 'npcs', 'characters', 'events', 'maps'];
+      const QUEST_STATUS = ['ativa', 'pausada', 'parcial', 'concluida', 'falhou'];
+      const TREATMENTS = ['text', 'color', 'image', 'crt'];
+      const VARIANTS = ['', 'typewriter', 'scroll', 'terminal', 'sacred', 'auto'];
+      const HANDOUTS = ['letter', 'poster', 'dataslate', 'plate', 'telegram', 'dossier', 'edict', 'newspaper', 'ticket'];
+      const ABILS = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+      let kit = {};
+      let filePath = '';
+
+      function esc(s) {
+        return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
+      function show(kind, text) {
+        banner.className = kind;
+        banner.textContent = text;
+      }
+      function get(obj, path) {
+        return path.split('.').reduce((a, k) => (a == null ? a : a[k]), obj);
+      }
+      function set(obj, path, value) {
+        const parts = path.split('.');
+        let cur = obj;
+        for (let i = 0; i < parts.length - 1; i++) {
+          const p = parts[i];
+          const next = parts[i + 1];
+          if (cur[p] == null) cur[p] = /^\d+$/.test(next) ? [] : {};
+          cur = cur[p];
+        }
+        const last = parts[parts.length - 1];
+        if (value === undefined) delete cur[last];
+        else cur[last] = value;
+      }
+      function slugify(input) {
+        return String(input || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      }
+      function field(label, path, opts = {}) {
+        const t = opts.type || 'text';
+        const raw = get(kit, path);
+        const extra = opts.wide ? ' wide' : '';
+        if (t === 'textarea') {
+          const data = opts.lines ? 'lines' : opts.tags ? 'tags' : 'string';
+          const shown = opts.lines ? (raw || []).join('\n') : opts.tags ? (raw || []).join(', ') : (raw ?? '');
+          return `<label class="field${extra}"><span>${esc(label)}</span><textarea data-path="${esc(path)}" data-type="${data}" rows="${opts.rows || 5}">${esc(shown)}</textarea></label>`;
+        }
+        if (t === 'select') {
+          const v = raw ?? '';
+          const empty = opts.optional ? '<option value="">—</option>' : '';
+          const optsHtml = (opts.options || []).map((o) => `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc(o || '—')}</option>`).join('');
+          return `<label class="field${extra}"><span>${esc(label)}</span><select data-path="${esc(path)}">${empty}${optsHtml}</select></label>`;
+        }
+        if (t === 'check') {
+          return `<label class="check"><input type="checkbox" data-path="${esc(path)}" data-type="bool" ${raw ? 'checked' : ''}> ${esc(label)}</label>`;
+        }
+        const n = t === 'number' ? 'number' : 'string';
+        return `<label class="field${extra}"><span>${esc(label)}</span><input type="${t}" data-path="${esc(path)}" data-type="${n}" value="${esc(raw ?? '')}"></label>`;
+      }
+      function tools(kind, i) {
+        return `<div class="tools">
+          <button type="button" data-act="up" data-kind="${kind}" data-i="${i}">↑</button>
+          <button type="button" data-act="down" data-kind="${kind}" data-i="${i}">↓</button>
+          <button type="button" class="danger" data-act="remove" data-kind="${kind}" data-i="${i}">Remover</button>
+        </div>`;
+      }
+      function ensureArr(key) {
+        if (!Array.isArray(kit[key])) kit[key] = [];
+        return kit[key];
+      }
+      function treatmentFields(prefix) {
+        const kind = get(kit, prefix + '.kind') || 'text';
+        let extra = '';
+        if (kind === 'text') {
+          extra = field('Texto', prefix + '.text', { type: 'textarea', rows: 6, wide: true }) +
+            field('Variante', prefix + '.variant', { type: 'select', options: VARIANTS, optional: true });
+        } else if (kind === 'color') {
+          extra = field('Cor', prefix + '.color', { type: 'color' }) + field('Rótulo', prefix + '.label');
+        } else if (kind === 'image') {
+          extra = field('Arquivo / URL', prefix + '.src') + field('Alt', prefix + '.alt');
+        } else if (kind === 'crt') {
+          extra = field('Tema CRT', prefix + '.theme', { type: 'select', options: ['phosphor', 'amber', 'ice'], optional: true }) +
+            field('Linhas', prefix + '.lines', { type: 'textarea', lines: true, rows: 6, wide: true });
+        }
+        return `<div class="grid">${field('Tratamento', prefix + '.kind', { type: 'select', options: TREATMENTS })}</div><div class="grid">${extra}</div>`;
+      }
+      function render() {
+        const scenes = kit.scenes || [];
+        const entries = kit.entries || [];
+        const parties = kit.parties || [];
+        const party = kit.party || [];
+        const quests = kit.quests || [];
+        const handouts = kit.handouts || [];
+        const lancerEvents = (kit.lancer && kit.lancer.events) || [];
+        const cmds = Object.entries((kit.terminal && kit.terminal.commands) || {});
+        const files = (kit.terminal && kit.terminal.files) || [];
+
+        app.innerHTML = `
+          <p class="hint">Preencha o que a sessão precisa. O arquivo YAML é gravado ao salvar — você não precisa editá-lo à mão. Blocos vazios são ignorados.</p>
+
+          <details class="block" open>
+            <summary>Sessão</summary>
+            <div class="grid">
+              ${field('ID', 'id')}
+              ${field('Título', 'title')}
+              ${field('Sistema', 'system')}
+              ${field('Gênero', 'genre', { type: 'select', options: GENRES, optional: true })}
+              ${field('Data', 'date')}
+              ${field('Local', 'location')}
+              ${field('Ano da era', 'era.startYear', { type: 'number' })}
+              ${field('Rótulo da era', 'era.label')}
+            </div>
+          </details>
+
+          <details class="block" open>
+            <summary>Campanha</summary>
+            <div class="grid">
+              ${field('ID', 'campaign.id')}
+              ${field('Nome', 'campaign.name')}
+              ${field('Tema', 'campaign.theme')}
+              ${field('Emoji', 'campaign.emoji')}
+              ${field('Ordem', 'campaign.order', { type: 'number' })}
+              ${field('Resumo', 'campaign.summary', { type: 'textarea', rows: 3, wide: true })}
+            </div>
+          </details>
+
+          <details class="block" ${scenes.length ? 'open' : ''}>
+            <summary>Cenas <span class="count">${scenes.length}</span></summary>
+            ${scenes.map((s, i) => `
+              <div class="item">
+                <div class="item-head"><strong>${esc(s.name || s.id || 'Cena ' + (i + 1))}</strong>${tools('scenes', i)}</div>
+                <div class="grid">
+                  ${field('ID', 'scenes.' + i + '.id')}
+                  ${field('Nome', 'scenes.' + i + '.name')}
+                </div>
+                ${treatmentFields('scenes.' + i + '.treatment')}
+              </div>`).join('')}
+            <button type="button" class="add" data-act="add" data-kind="scenes">+ Cena</button>
+          </details>
+
+          <details class="block" ${entries.length ? 'open' : ''}>
+            <summary>Entradas (wiki) <span class="count">${entries.length}</span></summary>
+            ${entries.map((s, i) => `
+              <div class="item">
+                <div class="item-head"><strong>${esc(s.title || 'Entrada ' + (i + 1))}</strong>${tools('entries', i)}</div>
+                <div class="grid">
+                  ${field('Tipo', 'entries.' + i + '.type', { type: 'select', options: ENTRY_TYPES })}
+                  ${field('Slug', 'entries.' + i + '.slug')}
+                  ${field('Título', 'entries.' + i + '.title')}
+                  ${field('Emoji', 'entries.' + i + '.emoji')}
+                  ${field('Status', 'entries.' + i + '.status')}
+                  ${field('Papel', 'entries.' + i + '.role')}
+                  ${field('Facção', 'entries.' + i + '.faction')}
+                  ${field('Local', 'entries.' + i + '.location')}
+                  ${field('Data', 'entries.' + i + '.date')}
+                  ${field('Ordem', 'entries.' + i + '.order', { type: 'number' })}
+                  ${field('Tags (vírgula)', 'entries.' + i + '.tags', { tags: true })}
+                  ${field('Resumo', 'entries.' + i + '.summary', { type: 'textarea', rows: 2, wide: true })}
+                  ${field('Texto', 'entries.' + i + '.body', { type: 'textarea', rows: 6, wide: true })}
+                </div>
+              </div>`).join('')}
+            <button type="button" class="add" data-act="add" data-kind="entries">+ Entrada</button>
+          </details>
+
+          <details class="block" ${parties.length || party.length ? 'open' : ''}>
+            <summary>Grupos e personagens <span class="count">${party.length}</span></summary>
+            ${parties.map((s, i) => `
+              <div class="item">
+                <div class="item-head"><strong>Grupo · ${esc(s.name || s.id || String(i + 1))}</strong>${tools('parties', i)}</div>
+                <div class="grid">${field('ID', 'parties.' + i + '.id')}${field('Nome', 'parties.' + i + '.name')}</div>
+              </div>`).join('')}
+            <button type="button" class="add" data-act="add" data-kind="parties">+ Grupo</button>
+            ${party.map((s, i) => `
+              <div class="item">
+                <div class="item-head"><strong>${esc(s.name || 'Personagem ' + (i + 1))}</strong>${tools('party', i)}</div>
+                <div class="grid">
+                  ${field('ID', 'party.' + i + '.id')}
+                  ${field('Nome', 'party.' + i + '.name')}
+                  ${field('Raça', 'party.' + i + '.race')}
+                  ${field('Nível', 'party.' + i + '.level', { type: 'number' })}
+                  ${field('Grupo (partyId)', 'party.' + i + '.partyId')}
+                  ${field('Jogador', 'party.' + i + '.player')}
+                  ${field('Origem', 'party.' + i + '.source', { type: 'select', options: ['ddb', 'manual'], optional: true })}
+                  ${field('HP', 'party.' + i + '.hp', { type: 'number' })}
+                  ${field('HP máx', 'party.' + i + '.maxHp', { type: 'number' })}
+                  ${field('CA', 'party.' + i + '.ac', { type: 'number' })}
+                  ${ABILS.map((a) => field(a.toUpperCase(), 'party.' + i + '.abilities.' + a, { type: 'number' })).join('')}
+                  ${field('História', 'party.' + i + '.backstory', { type: 'textarea', rows: 3, wide: true })}
+                </div>
+                <div class="nested">
+                  <span style="color:var(--muted);font-size:12px">Classes</span>
+                  ${(s.classes || []).map((c, j) => `
+                    <div class="grid" style="margin-top:8px">
+                      ${field('Classe', 'party.' + i + '.classes.' + j + '.name')}
+                      ${field('Nível', 'party.' + i + '.classes.' + j + '.level', { type: 'number' })}
+                      ${field('Subclasse', 'party.' + i + '.classes.' + j + '.subclass')}
+                      <div class="check"><button type="button" class="danger" data-act="remove-class" data-i="${i}" data-j="${j}">Remover classe</button></div>
+                    </div>`).join('')}
+                  <button type="button" class="add" data-act="add-class" data-i="${i}">+ Classe</button>
+                </div>
+              </div>`).join('')}
+            <button type="button" class="add" data-act="add" data-kind="party">+ Personagem</button>
+          </details>
+
+          <details class="block" ${quests.length ? 'open' : ''}>
+            <summary>Missões <span class="count">${quests.length}</span></summary>
+            ${quests.map((s, i) => `
+              <div class="item">
+                <div class="item-head"><strong>${esc(s.title || 'Missão ' + (i + 1))}</strong>${tools('quests', i)}</div>
+                <div class="grid">
+                  ${field('ID', 'quests.' + i + '.id')}
+                  ${field('Título', 'quests.' + i + '.title')}
+                  ${field('Status', 'quests.' + i + '.status', { type: 'select', options: QUEST_STATUS, optional: true })}
+                  ${field('Grupo', 'quests.' + i + '.partyId')}
+                  ${field('Recompensa', 'quests.' + i + '.reward')}
+                  ${field('Objetivo', 'quests.' + i + '.objective', { type: 'textarea', rows: 3, wide: true })}
+                  ${field('Notas', 'quests.' + i + '.notes', { type: 'textarea', rows: 2, wide: true })}
+                  ${field('Guilda', 'quests.' + i + '.guild.name')}
+                  ${field('Lema', 'quests.' + i + '.guild.motto')}
+                  ${field('Signatário', 'quests.' + i + '.guild.signer')}
+                  ${field('Papel', 'quests.' + i + '.guild.role')}
+                  ${field('Glifo', 'quests.' + i + '.guild.glyph')}
+                </div>
+              </div>`).join('')}
+            <button type="button" class="add" data-act="add" data-kind="quests">+ Missão</button>
+          </details>
+
+          <details class="block">
+            <summary>Briefing</summary>
+            <div class="grid">
+              ${field('Tipo', 'briefing.kind', { type: 'select', options: ['guild', 'lancer'], optional: true })}
+              ${field('Nome da guilda / esquadrão', 'briefing.guildName')}
+              ${field('Título de boot', 'briefing.bootTitle')}
+              ${field('Brasão', 'briefing.crest', { type: 'select', options: ['fleur', 'd20'], optional: true })}
+            </div>
+          </details>
+
+          <details class="block" ${kit.terminal ? 'open' : ''}>
+            <summary>Terminal</summary>
+            <div class="grid">
+              ${field('Tema', 'terminal.theme')}
+              ${field('ID', 'terminal.id')}
+              ${field('Nome', 'terminal.name')}
+              ${field('Cabeçalho', 'terminal.header')}
+              ${field('MOTD (uma linha por linha)', 'terminal.motd', { type: 'textarea', lines: true, rows: 6, wide: true })}
+            </div>
+            ${(cmds.map(([name], i) => `
+              <div class="item">
+                <div class="item-head"><strong>Comando · ${esc(name)}</strong>
+                  <button type="button" class="danger" data-act="remove-cmd" data-i="${i}">Remover</button>
+                </div>
+                <div class="grid">
+                  <label class="field"><span>Nome</span><input data-act="cmd-name" data-i="${i}" value="${esc(name)}"></label>
+                  ${field('Resposta (linhas)', 'terminal.commands.' + name, { type: 'textarea', lines: true, rows: 5, wide: true })}
+                </div>
+              </div>`).join(''))}
+            <button type="button" class="add" data-act="add-cmd">+ Comando</button>
+            ${files.map((s, i) => `
+              <div class="item">
+                <div class="item-head"><strong>Arquivo · ${esc(s.path || String(i + 1))}</strong>${tools('tfiles', i)}</div>
+                <div class="grid">
+                  ${field('Caminho', 'terminal.files.' + i + '.path')}
+                  ${field('Senha', 'terminal.files.' + i + '.password')}
+                  ${field('DC do crack', 'terminal.files.' + i + '.crackDC', { type: 'number' })}
+                  ${field('Conteúdo', 'terminal.files.' + i + '.content', { type: 'textarea', rows: 6, wide: true })}
+                  ${field('Travado', 'terminal.files.' + i + '.locked', { type: 'check' })}
+                  ${field('Crackável', 'terminal.files.' + i + '.crackable', { type: 'check' })}
+                  ${field('Jogo de decrypt', 'terminal.files.' + i + '.decryptGame', { type: 'check' })}
+                  ${field('Tracer', 'terminal.files.' + i + '.tracer', { type: 'check' })}
+                </div>
+              </div>`).join('')}
+            <button type="button" class="add" data-act="add-file">+ Arquivo</button>
+          </details>
+
+          <details class="block" ${handouts.length ? 'open' : ''}>
+            <summary>Handouts <span class="count">${handouts.length}</span></summary>
+            ${handouts.map((s, i) => `
+              <div class="item">
+                <div class="item-head"><strong>${esc(s.title || s.slug || 'Handout ' + (i + 1))}</strong>${tools('handouts', i)}</div>
+                <div class="grid">
+                  ${field('Modelo', 'handouts.' + i + '.template', { type: 'select', options: HANDOUTS })}
+                  ${field('Slug', 'handouts.' + i + '.slug')}
+                  ${field('Título', 'handouts.' + i + '.title')}
+                  ${field('Tamanho', 'handouts.' + i + '.size', { type: 'select', options: ['a5', 'a6'], optional: true })}
+                  ${field('De', 'handouts.' + i + '.from')}
+                  ${field('Para', 'handouts.' + i + '.to')}
+                  ${field('Data', 'handouts.' + i + '.date')}
+                  ${field('Selo', 'handouts.' + i + '.seal')}
+                  ${field('Sobrancelha', 'handouts.' + i + '.eyebrow')}
+                  ${field('QR', 'handouts.' + i + '.qr')}
+                  ${field('Corpo', 'handouts.' + i + '.body', { type: 'textarea', rows: 7, wide: true })}
+                </div>
+              </div>`).join('')}
+            <button type="button" class="add" data-act="add" data-kind="handouts">+ Handout</button>
+          </details>
+
+          <details class="block" ${kit.lancer ? 'open' : ''}>
+            <summary>Lancer</summary>
+            <div class="grid">
+              ${field('Slug da missão', 'lancer.mission.slug')}
+              ${field('Nome', 'lancer.mission.name')}
+              ${field('Status', 'lancer.mission.status')}
+              ${field('Texto (markdown)', 'lancer.mission.body', { type: 'textarea', rows: 10, wide: true })}
+            </div>
+            ${lancerEvents.map((s, i) => `
+              <div class="item">
+                <div class="item-head"><strong>Evento · ${esc(s.name || s.slug || String(i + 1))}</strong>${tools('levents', i)}</div>
+                <div class="grid">
+                  ${field('Slug', 'lancer.events.' + i + '.slug')}
+                  ${field('Nome', 'lancer.events.' + i + '.name')}
+                  ${field('Status', 'lancer.events.' + i + '.status')}
+                  ${field('Texto', 'lancer.events.' + i + '.body', { type: 'textarea', rows: 8, wide: true })}
+                </div>
+              </div>`).join('')}
+            <button type="button" class="add" data-act="add-levent">+ Evento Lancer</button>
+          </details>
+        `;
+        bind();
+      }
+      function bind() {
+        app.querySelectorAll('[data-path]').forEach((el) => {
+          el.addEventListener('input', onInput);
+          el.addEventListener('change', onInput);
+        });
+        app.querySelectorAll('[data-act]').forEach((el) => {
+          el.addEventListener('click', onAct);
+        });
+        app.querySelectorAll('[data-act="cmd-name"]').forEach((el) => {
+          el.addEventListener('change', onCmdRename);
+        });
+      }
+      function onInput(e) {
+        const el = e.target;
+        const path = el.dataset.path;
+        if (!path) return;
+        const type = el.dataset.type || 'string';
+        let value;
+        if (type === 'bool') value = el.checked;
+        else if (type === 'number') value = el.value === '' ? undefined : Number(el.value);
+        else if (type === 'tags') value = el.value.split(',').map((s) => s.trim()).filter(Boolean);
+        else if (type === 'lines') value = el.value.split('\n');
+        else value = el.value;
+        if (path.endsWith('.treatment.kind')) {
+          const prefix = path.slice(0, -5);
+          const kind = value;
+          if (kind === 'text') set(kit, prefix, { kind: 'text', text: '' });
+          else if (kind === 'color') set(kit, prefix, { kind: 'color', color: '#222222' });
+          else if (kind === 'image') set(kit, prefix, { kind: 'image', src: '' });
+          else if (kind === 'crt') set(kit, prefix, { kind: 'crt', lines: [] });
+          const y = window.scrollY;
+          render();
+          window.scrollTo(0, y);
+          return;
+        }
+        set(kit, path, value);
+        if (path === 'title' && !kit.id) kit.id = slugify(value);
+        if (path === 'campaign.name' && kit.campaign && !kit.campaign.id) kit.campaign.id = slugify(value);
+      }
+      function move(arr, i, dir) {
+        const j = i + dir;
+        if (j < 0 || j >= arr.length) return;
+        const [item] = arr.splice(i, 1);
+        arr.splice(j, 0, item);
+      }
+      function onCmdRename(e) {
+        const i = Number(e.target.dataset.i);
+        const names = Object.keys((kit.terminal && kit.terminal.commands) || {});
+        const oldName = names[i];
+        const next = slugify(e.target.value) || e.target.value.trim();
+        if (!oldName || !next || next === oldName) return;
+        if (!kit.terminal.commands) kit.terminal.commands = {};
+        kit.terminal.commands[next] = kit.terminal.commands[oldName];
+        delete kit.terminal.commands[oldName];
+        const y = window.scrollY;
+        render();
+        window.scrollTo(0, y);
+      }
+      function onAct(e) {
+        const btn = e.currentTarget;
+        const act = btn.dataset.act;
+        const kind = btn.dataset.kind;
+        const i = Number(btn.dataset.i);
+        const y = window.scrollY;
+        if (act === 'add') {
+          const defaults = {
+            scenes: () => ({ id: '', name: '', treatment: { kind: 'text', text: '' } }),
+            entries: () => ({ type: 'lore', title: '', body: '' }),
+            parties: () => ({ id: '', name: '' }),
+            party: () => ({ id: '', name: '', classes: [] }),
+            quests: () => ({ id: '', title: '', status: 'ativa' }),
+            handouts: () => ({ template: 'letter', slug: '', title: '', body: '' }),
+          };
+          ensureArr(kind).push(defaults[kind]());
+        } else if (act === 'remove') {
+          if (kind === 'tfiles') {
+            if (!kit.terminal) return;
+            (kit.terminal.files || []).splice(i, 1);
+          } else if (kind === 'levents') {
+            if (!kit.lancer || !kit.lancer.events) return;
+            kit.lancer.events.splice(i, 1);
+          } else {
+            ensureArr(kind).splice(i, 1);
+          }
+        } else if (act === 'up' || act === 'down') {
+          const dir = act === 'up' ? -1 : 1;
+          if (kind === 'tfiles') move(kit.terminal.files || [], i, dir);
+          else if (kind === 'levents') move((kit.lancer && kit.lancer.events) || [], i, dir);
+          else move(ensureArr(kind), i, dir);
+        } else if (act === 'add-class') {
+          const ch = (kit.party || [])[i];
+          if (!ch) return;
+          if (!ch.classes) ch.classes = [];
+          ch.classes.push({ name: '', level: 1 });
+        } else if (act === 'remove-class') {
+          const ch = (kit.party || [])[i];
+          const j = Number(btn.dataset.j);
+          if (ch && ch.classes) ch.classes.splice(j, 1);
+        } else if (act === 'add-cmd') {
+          if (!kit.terminal) kit.terminal = { theme: 'ibm', id: 'terminal', name: 'Terminal', files: [] };
+          if (!kit.terminal.commands) kit.terminal.commands = {};
+          let n = 'comando';
+          let k = 1;
+          while (kit.terminal.commands[n]) { k += 1; n = 'comando-' + k; }
+          kit.terminal.commands[n] = [''];
+        } else if (act === 'remove-cmd') {
+          const names = Object.keys((kit.terminal && kit.terminal.commands) || {});
+          if (kit.terminal && kit.terminal.commands && names[i]) delete kit.terminal.commands[names[i]];
+        } else if (act === 'add-file') {
+          if (!kit.terminal) kit.terminal = { theme: 'ibm', id: 'terminal', name: 'Terminal', files: [] };
+          if (!kit.terminal.files) kit.terminal.files = [];
+          kit.terminal.files.push({ path: 'notes.md', content: '' });
+        } else if (act === 'add-levent') {
+          if (!kit.lancer) kit.lancer = {};
+          if (!kit.lancer.events) kit.lancer.events = [];
+          kit.lancer.events.push({ slug: '', name: '', body: '' });
+        } else {
+          return;
+        }
+        render();
+        window.scrollTo(0, y);
+      }
+      async function api(method, path, body) {
+        const res = await fetch(path, {
+          method,
+          headers: body ? { 'content-type': 'application/json' } : undefined,
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+        return data;
+      }
+      async function save() {
+        const data = await api('PUT', '/api/kit', { kit });
+        kit = data.kit;
+        show('ok', 'Salvo em ' + (data.path || filePath));
+        return data;
+      }
+      document.getElementById('btn-save').addEventListener('click', async () => {
+        try { await save(); }
+        catch (err) { show('err', err.message); }
+      });
+      document.getElementById('btn-compile').addEventListener('click', async () => {
+        try {
+          const data = await api('POST', '/api/compile', { kit });
+          kit = data.kit;
+          const files = (data.files || []).join('\n');
+          show('ok', 'Salvo e compilado em ' + data.out + (files ? '\n' + files : ''));
+        } catch (err) { show('err', err.message); }
+      });
+      document.getElementById('btn-quit').addEventListener('click', async () => {
+        try { await api('POST', '/api/shutdown'); } catch (_) {}
+        show('ok', 'Editor encerrado. Pode fechar esta aba.');
+      });
+      fetch('/api/kit').then((r) => r.json()).then((data) => {
+        kit = data.kit || {};
+        filePath = data.path || '';
+        pathEl.textContent = filePath;
+        if (data.warning) show('warn', 'Arquivo inválido — salvando substitui o conteúdo.\n' + data.warning);
+        render();
+      }).catch((err) => show('err', err.message));
+    })();
+  </script>
+</body>
+</html>
