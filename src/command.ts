@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { openBrowser, startAuthorServer } from './author/server.js'
-import { relToRoot } from './author/workspace.js'
+import { loadWorkspace, relToRoot } from './author/workspace.js'
+import { inheritFromSiblings, kitLabel } from './catalog.js'
 import { parseEmitList, writeCompile } from './compile.js'
 import { dumpKit, kitFromDir, kitFromPath } from './dump.js'
 import { KitError } from './errors.js'
@@ -15,14 +16,19 @@ Uso:
   session-kit compile <kit.yaml> --out <dir> --emit gmcr,codex,itr,briefing,lancer,press
   session-kit edit [kit.yaml|pasta] [--create] [--port N] [--no-open]
   session-kit new <dir> [--port N] [--no-open]
+  session-kit list [pasta]
 
 validate / compile leem o YAML. Sem --emit, todos os emissores rodam.
 Chaves desconhecidas em --emit são erro.
 
 edit abre o formulário no navegador. Pasta (ou kits/ se omitir o
 caminho) lista todas as sessões: as antigas ficam travadas até Editar.
+Nova sessão escolhe campanha e sistema já usados na pasta.
 Arquivo abre só aquele kit. --create cria o YAML se não existir.
-new cria <dir>/kit.yaml e abre o catálogo (ou o arquivo) já destrava.
+new cria <dir>/kit.yaml (herda campanha/sistema dos irmãos) e abre
+o catálogo (ou o arquivo) já destrava.
+list imprime caminho e rótulo (campanha — título (sistema)). Sem
+pasta, usa kits/ se existir.
 
 Emissores:
   gmcr       gmcr/<id>.json
@@ -39,6 +45,7 @@ export type CliRequest =
   | { cmd: 'compile'; file: string; out: string; emit?: string }
   | { cmd: 'edit'; file?: string; create: boolean; port?: number; open: boolean }
   | { cmd: 'new'; dir: string; port?: number; open: boolean }
+  | { cmd: 'list'; dir?: string }
 
 export interface CliIo {
   stdout: (line: string) => void
@@ -56,7 +63,7 @@ const defaultIo: CliIo = {
   cwd: process.cwd(),
 }
 
-const COMMANDS = new Set(['validate', 'compile', 'edit', 'new', 'help'])
+const COMMANDS = new Set(['validate', 'compile', 'edit', 'new', 'list', 'help'])
 
 function parsePort(raw: string): number {
   const n = Number(raw)
@@ -73,7 +80,7 @@ export function parseArgv(argv: string[]): CliRequest {
 
   const cmd = argv[0]
   if (!COMMANDS.has(cmd)) {
-    throw new KitError(`Comando desconhecido: ${cmd}. Use validate, compile, edit ou new.`)
+    throw new KitError(`Comando desconhecido: ${cmd}. Use validate, compile, edit, new ou list.`)
   }
 
   const rest = argv.slice(1)
@@ -159,6 +166,13 @@ export function parseArgv(argv: string[]): CliRequest {
     return { cmd: 'edit', create, open, ...(positional ? { file: positional } : {}), ...(port !== undefined ? { port } : {}) }
   }
 
+  if (cmd === 'list') {
+    if (out !== undefined || emit !== undefined || port !== undefined || create || !open) {
+      throw new KitError('list não aceita --out, --emit, --port, --create nem --no-open.')
+    }
+    return { cmd: 'list', ...(positional ? { dir: positional } : {}) }
+  }
+
   if (!positional) throw new KitError('Informe o diretório do novo kit.')
   if (out !== undefined || emit !== undefined || create) {
     throw new KitError('new não aceita --out, --emit nem --create.')
@@ -171,8 +185,8 @@ function writeNewKit(file: string, fromDir?: string): void {
     throw new KitError(`Já existe: ${file}. Use session-kit edit.`)
   }
   mkdirSync(path.dirname(file), { recursive: true })
-  const kit = fromDir ? kitFromDir(fromDir) : kitFromPath(file)
-  writeFileSync(file, dumpKit(kit), 'utf8')
+  const base = fromDir ? kitFromDir(fromDir) : kitFromPath(file)
+  writeFileSync(file, dumpKit(inheritFromSiblings(base, file)), 'utf8')
 }
 
 async function waitServer(
@@ -181,7 +195,7 @@ async function waitServer(
   open: boolean,
 ): Promise<number> {
   io.stdout(`Editor: ${server.url}`)
-  io.stdout('Sessões antigas ficam travadas até Editar. Ctrl+C ou Encerrar para sair.')
+  io.stdout('Sessões antigas ficam travadas até Editar. Nova sessão lista campanhas e sistemas já usados. Ctrl+C ou Encerrar para sair.')
   if (open) openBrowser(server.url)
   const stop = () => {
     void server.close()
@@ -250,6 +264,23 @@ export async function runCli(argv: string[], io: CliIo = defaultIo): Promise<num
         return await runAuthorRoot(abs, req, io)
       }
       return await runAuthor(target, req, io)
+    }
+    if (req.cmd === 'list') {
+      const target = req.dir ?? (existsSync(path.join(io.cwd, 'kits')) ? 'kits' : '.')
+      const abs = path.resolve(io.cwd, target)
+      if (!existsSync(abs) || !statSync(abs).isDirectory()) {
+        throw new KitError(`Diretório não encontrado: ${abs}`)
+      }
+      const sessions = loadWorkspace(abs)
+      if (sessions.length === 0) {
+        io.stderr(`Nenhum kit.yaml em ${abs}`)
+        return 1
+      }
+      for (const session of sessions) {
+        const rel = path.relative(io.cwd, session.path) || session.path
+        io.stdout(`${rel}\t${kitLabel(session.kit)}`)
+      }
+      return 0
     }
     if (req.cmd === 'new') {
       const kitPath = path.join(path.resolve(io.cwd, req.dir), 'kit.yaml')
