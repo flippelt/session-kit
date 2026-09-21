@@ -156,6 +156,8 @@
       let mode = 'single';
       let showNew = false;
       let sessions = [];
+      let campaigns = [];
+      let systems = [];
 
       function esc(s) {
         return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -197,7 +199,11 @@
         if (t === 'select') {
           const v = raw ?? '';
           const empty = opts.optional ? '<option value="">—</option>' : '';
-          const optsHtml = (opts.options || []).map((o) => `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc(o || '—')}</option>`).join('');
+          const optsHtml = (opts.options || []).map((o) => {
+            const value = typeof o === 'string' ? o : o.value;
+            const lab = typeof o === 'string' ? o : o.label;
+            return `<option value="${esc(value)}" ${value === v ? 'selected' : ''}>${esc(lab || '—')}</option>`;
+          }).join('');
           return `<label class="field${extra}"><span>${esc(label)}</span><select ${siAttr}${dis}>${empty}${optsHtml}</select></label>`;
         }
         if (t === 'check') {
@@ -249,6 +255,19 @@
           ${inner}
         </details>`;
       }
+      function systemOptions(current) {
+        const opts = systems.map((s) => ({ value: s.id, label: s.label }));
+        if (current && !systems.some((s) => s.id === current)) {
+          opts.unshift({ value: current, label: current });
+        }
+        return opts;
+      }
+      function campaignOptions(selected) {
+        return campaigns.map((c) => {
+          const extra = c.system ? ' · ' + (systems.find((s) => s.id === c.system)?.label || c.system) : '';
+          return `<option value="${esc(c.dir)}" ${c.dir === selected ? 'selected' : ''}>${esc(c.name + extra)}</option>`;
+        }).join('');
+      }
       function sessionBody(s, si) {
         const kit = s.kit;
         const F = (label, path, opts) => field(kit, si, label, path, opts);
@@ -265,16 +284,25 @@
           `<button type="button" data-act="goto-step" data-si="${si}" data-step="${st.id}" class="${s.stepsOpen[st.id] ? 'active' : ''}">${n + 1} ${esc(st.label)}</button>`
         ).join('');
 
+        const campPick = s.locked || campaigns.length === 0 ? '' : `<div class="grid">
+            <label class="field wide"><span>Preencher de uma campanha existente</span>
+              <select data-apply-campaign="${si}">
+                <option value="">—</option>
+                ${campaignOptions('')}
+              </select>
+            </label>
+          </div>`;
         const identidade = `
           <p class="inner-label">Sessão</p>
           <div class="grid">
-            ${F('ID', 'id')}${F('Título', 'title')}${F('Sistema', 'system')}
+            ${F('ID', 'id')}${F('Título', 'title')}${F('Sistema', 'system', { type: 'select', options: systemOptions(kit.system), optional: true })}
             ${F('Gênero', 'genre', { type: 'select', options: GENRES, optional: true })}
             ${F('Data', 'date')}${F('Local', 'location')}
             ${F('Ano da era', 'era.startYear', { type: 'number'})}${F('Rótulo da era', 'era.label')}
           </div>
           <hr class="inner-sep">
           <p class="inner-label">Campanha</p>
+          ${campPick}
           <div class="grid">
             ${F('ID', 'campaign.id')}${F('Nome', 'campaign.name')}${F('Tema', 'campaign.theme')}
             ${F('Emoji', 'campaign.emoji')}${F('Ordem', 'campaign.order', { type: 'number' })}
@@ -431,33 +459,67 @@
         };
       }
       function render() {
+        const defaultCamp = campaigns[0] ? campaigns[0].dir : '';
+        const defaultSys = campaigns[0] && campaigns[0].system ? campaigns[0].system : '';
         const newBox = !showNew || mode === 'single' ? '' : `<section class="new-box">
           <p class="inner-label">Nova sessão</p>
           <div class="grid">
-            <label class="field"><span>Campanha</span><input id="new-camp" placeholder="mirrus"></label>
+            <label class="field"><span>Campanha</span>
+              <select id="new-camp">
+                ${campaignOptions(defaultCamp)}
+                <option value="" ${defaultCamp ? '' : 'selected'}>Nova campanha…</option>
+              </select>
+            </label>
+            <label class="field" id="new-camp-name-wrap"${defaultCamp ? ' hidden' : ''}>
+              <span>Nome da campanha</span>
+              <input id="new-camp-name" placeholder="Crônicas de Mirrus">
+            </label>
             <label class="field"><span>Encontro</span><input id="new-enc" placeholder="o-comeco-do-fim"></label>
+            <label class="field"><span>Sistema</span>
+              <select id="new-sys">
+                <option value="">—</option>
+                ${systemOptions(defaultSys).map((o) => `<option value="${esc(o.value)}" ${o.value === defaultSys ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
+              </select>
+            </label>
           </div>
           <button type="button" class="primary add" data-act="create-kit">Criar e editar</button>
         </section>`;
-        const cards = sessions.map((s, si) => {
-          const kit = s.kit;
-          const title = kit.title || kit.id || s.rel;
-          const camp = (kit.campaign && kit.campaign.name) || '';
-          return `<article class="session ${s.locked ? 'is-locked' : ''} ${s.open ? 'is-open' : ''}" data-si="${si}">
-            <div class="session-head" data-act="toggle-session" data-si="${si}">
-              <div class="who">
-                <strong>${esc(title)}</strong>
-                <span class="meta">${esc(camp)}${camp && s.rel ? ' · ' : ''}${esc(s.rel || '')}</span>
+        const groups = [];
+        const seen = new Map();
+        sessions.forEach((s, si) => {
+          const camp = (s.kit.campaign && (s.kit.campaign.name || s.kit.campaign.id)) || 'Sem campanha';
+          if (!seen.has(camp)) {
+            seen.set(camp, groups.length);
+            groups.push({ name: camp, indices: [] });
+          }
+          groups[seen.get(camp)].indices.push(si);
+        });
+        const cards = groups.map((g) => {
+          const items = g.indices.map((si) => {
+            const s = sessions[si];
+            const kit = s.kit;
+            const title = kit.title || kit.id || s.rel;
+            const sys = kit.system ? systems.find((x) => x.id === kit.system)?.label || kit.system : '';
+            return `<article class="session ${s.locked ? 'is-locked' : ''} ${s.open ? 'is-open' : ''}" data-si="${si}">
+              <div class="session-head" data-act="toggle-session" data-si="${si}">
+                <div class="who">
+                  <strong>${esc(title)}</strong>
+                  <span class="meta">${esc([sys, s.rel].filter(Boolean).join(' · '))}</span>
+                </div>
+                <span class="badge ${s.locked ? 'lock' : 'edit'}">${s.locked ? 'Travada' : 'Editando'}</span>
+                ${s.locked
+                  ? `<button type="button" class="primary" data-act="unlock" data-si="${si}">Editar</button>`
+                  : ''}
               </div>
-              <span class="badge ${s.locked ? 'lock' : 'edit'}">${s.locked ? 'Travada' : 'Editando'}</span>
-              ${s.locked
-                ? `<button type="button" class="primary" data-act="unlock" data-si="${si}">Editar</button>`
-                : ''}
-            </div>
-            ${s.open ? sessionBody(s, si) : ''}
-          </article>`;
+              ${s.open ? sessionBody(s, si) : ''}
+            </article>`;
+          }).join('');
+          const head = mode === 'catalog' && groups.length > 1
+            ? `<p class="inner-label">${esc(g.name)}</p>`
+            : '';
+          return head + items;
         }).join('<div class="session-sep"></div>');
-        app.innerHTML = `<p class="hint">Sessões antigas ficam travadas até você apertar Editar. Cada sessão e cada item abre e fecha; as etapas separam o preenchimento.</p>${newBox}${cards || '<p class="hint">Nenhum kit.yaml neste diretório.</p>'}`;
+        app.innerHTML = `<p class="hint">Sessões antigas ficam travadas até você apertar Editar. Nova sessão lista as campanhas e sistemas já usados nesta pasta.</p>${newBox}${cards || '<p class="hint">Nenhum kit.yaml neste diretório.</p>'}`;
         bind();
       }
       function bind() {
@@ -475,6 +537,33 @@
             if (!s) return;
             if (el.dataset.step) s.stepsOpen[el.dataset.step] = el.open;
             if (el.dataset.item) s.itemOpen[el.dataset.item] = el.open;
+          });
+        });
+        const campSel = document.getElementById('new-camp');
+        if (campSel) {
+          campSel.addEventListener('change', () => {
+            const wrap = document.getElementById('new-camp-name-wrap');
+            const sys = document.getElementById('new-sys');
+            if (wrap) wrap.hidden = !!campSel.value;
+            const camp = campaigns.find((c) => c.dir === campSel.value);
+            if (sys) sys.value = camp && camp.system ? camp.system : '';
+          });
+        }
+        app.querySelectorAll('[data-apply-campaign]').forEach((el) => {
+          el.addEventListener('change', () => {
+            const s = sessions[Number(el.dataset.applyCampaign)];
+            const camp = campaigns.find((c) => c.dir === el.value);
+            if (!s || s.locked || !camp) return;
+            s.kit.campaign = { id: camp.id, name: camp.name };
+            if (camp.theme) s.kit.campaign.theme = camp.theme;
+            if (camp.emoji) s.kit.campaign.emoji = camp.emoji;
+            if (camp.summary) s.kit.campaign.summary = camp.summary;
+            if (camp.order != null) s.kit.campaign.order = camp.order;
+            if (camp.system) s.kit.system = camp.system;
+            if (camp.genre) s.kit.genre = camp.genre;
+            const y = window.scrollY;
+            render();
+            window.scrollTo(0, y);
           });
         });
       }
@@ -566,15 +655,41 @@
             show('ok', (act === 'save' ? 'Salvo em ' : 'Salvo e compilado em ') + (data.out || data.path) + extra);
           } catch (err) { show('err', err.message); return; }
         } else if (act === 'create-kit') {
-          const camp = slugify(document.getElementById('new-camp').value);
+          const campDir = document.getElementById('new-camp').value;
           const enc = slugify(document.getElementById('new-enc').value);
-          if (!camp || !enc) { show('err', 'Campanha e encontro são obrigatórios.'); return; }
+          const sys = document.getElementById('new-sys').value;
+          if (!enc) { show('err', 'Encontro é obrigatório.'); return; }
+          const body = {};
+          if (sys) body.system = sys;
+          if (campDir) {
+            body.dir = campDir + '/' + enc;
+          } else {
+            const name = (document.getElementById('new-camp-name').value || '').trim();
+            if (!name) { show('err', 'Nome da campanha é obrigatório.'); return; }
+            const slug = slugify(name);
+            if (!slug) { show('err', 'Nome da campanha inválido.'); return; }
+            body.dir = slug + '/' + enc;
+            body.campaignName = name;
+          }
           try {
-            const data = await api('POST', '/api/kits', { dir: camp + '/' + enc });
+            const data = await api('POST', '/api/kits', body);
             const created = hydrate(data.session);
             created.locked = false;
             created.open = true;
             sessions.push(created);
+            if (created.kit && created.kit.campaign) {
+              const dir = body.dir.split('/')[0];
+              if (!campaigns.some((c) => c.dir === dir)) {
+                campaigns.push({
+                  dir,
+                  id: created.kit.campaign.id,
+                  name: created.kit.campaign.name,
+                  system: created.kit.system,
+                  genre: created.kit.genre,
+                });
+                campaigns.sort((a, b) => a.name.localeCompare(b.name, 'pt'));
+              }
+            }
             showNew = false;
             show('ok', 'Criada ' + created.rel);
           } catch (err) { show('err', err.message); return; }
@@ -669,6 +784,8 @@
         mode = data.mode || 'single';
         pathEl.textContent = data.root || '';
         sessions = (data.sessions || []).map(hydrate);
+        campaigns = data.campaigns || [];
+        systems = data.systems || [];
         const warns = sessions.filter((s) => s.warning);
         if (warns.length) show('warn', warns.map((s) => s.rel + ': ' + s.warning).join('\n'));
         document.getElementById('btn-new').hidden = mode === 'single';

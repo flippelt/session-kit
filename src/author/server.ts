@@ -2,11 +2,13 @@ import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import http from 'node:http'
 import path from 'node:path'
+import { catalogFromKits, inheritFromSiblings } from '../catalog.js'
 import { writeCompile } from '../compile.js'
 import { dumpKit, kitFromUnknown } from '../dump.js'
 import { KitError } from '../errors.js'
 import { loadKitFile } from '../load.js'
 import type { Kit } from '../schema.js'
+import { slugify } from '../slugify.js'
 import {
   kitForNewRel,
   loadSession,
@@ -110,10 +112,12 @@ export async function startAuthorServer(opts: AuthorOptions): Promise<AuthorServ
         return
       }
       if (method === 'GET' && url.pathname === '/api/workspace') {
+        const sessions = loadWorkspace(root, singleFile, unlocked)
         send(res, 200, {
           mode,
           root,
-          sessions: loadWorkspace(root, singleFile, unlocked),
+          sessions,
+          ...catalogFromKits(sessions),
         })
         return
       }
@@ -143,12 +147,25 @@ export async function startAuthorServer(opts: AuthorOptions): Promise<AuthorServ
         if (mode === 'single') {
           throw new KitError('Este editor está aberto num arquivo só. Use session-kit edit <pasta> para o catálogo.')
         }
-        const body = JSON.parse(await readBody(req)) as { dir?: string }
+        const body = JSON.parse(await readBody(req)) as {
+          dir?: string
+          system?: string
+          campaignName?: string
+        }
         if (!body.dir) throw new KitError('Informe dir (campanha/encontro).')
         const rel = newKitRel(body.dir)
         const abs = resolveKitRel(root, rel)
         if (existsSync(abs)) throw new KitError(`Já existe: ${rel}`)
-        const kit = kitForNewRel(rel)
+        let kit = inheritFromSiblings(kitForNewRel(rel), abs)
+        if (body.system?.trim()) kit.system = body.system.trim()
+        if (body.campaignName?.trim()) {
+          const name = body.campaignName.trim()
+          kit.campaign = {
+            ...kit.campaign,
+            name,
+            id: slugify(name) || kit.campaign.id,
+          }
+        }
         mkdirSync(path.dirname(abs), { recursive: true })
         writeFileSync(abs, dumpKit(kit), 'utf8')
         unlocked.add(rel)

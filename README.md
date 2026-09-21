@@ -50,6 +50,7 @@ session-kit compile path/to/kit.yaml --out dist/
 session-kit compile path/to/kit.yaml --out dist/ --emit gmcr,codex,itr,briefing,lancer,press
 session-kit edit path/to/kit.yaml
 session-kit new campanha/encontro-01
+session-kit list kits
 ```
 
 Sem `--emit`, **todos** os emissores rodam. Chaves desconhecidas em `--emit`
@@ -68,11 +69,16 @@ session-kit new minha-campanha/encontro-01
 ```
 
 `edit` abre o navegador em `127.0.0.1`. Se o caminho é uma **pasta** (ou
-omitido, e existe `kits/`), o catálogo lista todas as sessões: as antigas
-ficam **travadas** até o botão Editar; cada sessão e cada item é colapsável,
-separado em etapas. `new` cria `<dir>/kit.yaml` e abre já destravado.
-`--create` no `edit` cria o arquivo se ele ainda não existir; `--no-open` só
-imprime a URL (útil em teste).
+omitido, e existe `kits/`), o catálogo lista todas as sessões agrupadas por
+campanha: as antigas ficam **travadas** até o botão Editar; cada sessão e
+cada item é colapsável, separado em etapas. **Nova sessão** escolhe uma
+campanha já existente (e herda nome, sistema, gênero e era) ou cria outra;
+o sistema é uma lista dos SRDs do GM Control Room mais os já usados na
+pasta. `new` cria `<dir>/kit.yaml` (com a mesma herança, se houver irmãos)
+e abre já destravado. `list [pasta]` imprime
+`caminho<TAB>campanha — título (sistema)`. `--create` no `edit` cria o
+arquivo se ele ainda não existir; `--no-open` só imprime a URL (útil em
+teste).
 
 O YAML continua sendo a fonte que o compilador lê. O formulário só evita que
 você precise conhecê-lo.
@@ -107,7 +113,8 @@ campaign:
 
 Campos de contexto (todos opcionais):
 
-- `system` — identificador livre (`dnd5e-2014`, `lancer`, …)
+- `system` — identificador do SRD (`dnd5e-2024`, `lancer`, …). O editor
+  lista os ids conhecidos; um valor fora da lista continua válido.
 - `genre` — `fantasy` · `cosmic-horror` · `sci-fi` · `modern` · `post-apocalyptic` · `generic`
 - `era.startYear` / `era.label`
 - `date`, `location`
