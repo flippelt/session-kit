@@ -17,11 +17,12 @@
       --ok: #6fa37a;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 ui-sans-serif, system-ui, sans-serif; }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 15px/1.45 ui-sans-serif, system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; height: 100dvh; }
     header.app {
-      position: sticky; top: 0; z-index: 5;
       display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
-      padding: 12px 20px; background: #120f0e; border-bottom: 1px solid var(--line);
+      padding: 10px 20px; background: #120f0e; border-bottom: 1px solid var(--line);
     }
     header.app .brand { font-weight: 700; letter-spacing: .02em; }
     header.app .path { color: var(--muted); font-size: 12px; word-break: break-all; }
@@ -35,60 +36,97 @@
     button.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
     button:hover { filter: brightness(1.08); }
     button:disabled { opacity: .45; cursor: not-allowed; filter: none; }
-    #banner { margin: 12px 20px 0; padding: 10px 14px; border-radius: 8px; display: none; white-space: pre-wrap; }
+    #banner { margin: 10px 20px 0; padding: 10px 14px; border-radius: 8px; display: none; white-space: pre-wrap; }
     #banner.ok { display: block; background: #1e3324; color: #c8e6cc; }
     #banner.err { display: block; background: #3a1e1a; color: #f0c4bc; }
     #banner.warn { display: block; background: #3a3018; color: #ead7a8; }
-    main { max-width: 980px; margin: 0 auto; padding: 16px 20px 80px; }
-    .hint { color: var(--muted); margin: 0 0 16px; }
+    .hint, .field-hint { color: var(--muted); margin: 0 0 12px; font-size: 13px; }
+    .kicker { margin: 0; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+
+    /* Menu à esquerda + palco, como no opord. */
+    #app {
+      position: relative; flex: 1; min-height: 0;
+      display: grid; grid-template-columns: var(--desk-w, 460px) minmax(0, 1fr);
+    }
+    #app.is-collapsed { grid-template-columns: minmax(0, 1fr); }
+    .desk {
+      min-width: 0; min-height: 0; overflow: auto; padding: 16px 18px 24px;
+      background: var(--bg-2); border-right: 1px solid var(--line);
+    }
+    .desk-resizer {
+      position: absolute; top: 0; bottom: 0; left: calc(var(--desk-w, 460px) - 4px); width: 8px;
+      cursor: col-resize; z-index: 6; touch-action: none;
+    }
+    .desk-resizer:hover, .desk-resizer:focus-visible {
+      outline: none;
+      background: linear-gradient(90deg, transparent 3px, var(--accent) 3px, var(--accent) 5px, transparent 5px);
+    }
+    .desk-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+    .desk-head h1 { margin: 2px 0 0; font-size: 20px; }
+    .desk-collapse { flex: none; padding: 4px 10px; font-size: 13px; }
+    .camp-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; margin: 14px 0 6px; }
+    .sess {
+      display: flex; gap: 10px; align-items: center; width: 100%; text-align: left;
+      padding: 10px 12px; margin-top: 6px; background: var(--card); border-radius: 10px;
+    }
+    .sess.active { border-color: var(--accent); }
+    .sess .who { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+    .sess strong { font-size: 14px; }
+    .sess .meta { color: var(--muted); font-size: 12px; word-break: break-all; }
+    .badge {
+      font-size: 11px; letter-spacing: .04em; text-transform: uppercase;
+      border: 1px solid var(--line); border-radius: 999px; padding: 3px 8px; color: var(--muted); flex: none;
+    }
+    .badge.lock { color: #ead7a8; border-color: #6a5a38; }
+    .badge.edit { color: #c8e6cc; border-color: #3d6b58; }
+    .steps { list-style: none; margin: 6px 0 4px 14px; padding: 0 0 0 10px; border-left: 1px solid var(--line); }
+    .steps button {
+      display: flex; gap: 10px; align-items: baseline; width: 100%; text-align: left;
+      background: transparent; border-color: transparent; padding: 6px 8px; border-radius: 8px;
+    }
+    .steps button.active { background: var(--card); border-color: var(--line); }
+    .steps button.active .step-title { color: var(--accent); }
+    .steps .step-title { font-weight: 650; font-size: 14px; }
+    .steps .step-sub { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+    .steps .count { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+    .stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+    .stage-scroll { flex: 1; min-height: 0; overflow: auto; padding: 18px 24px 24px; }
+    .stage-inner { max-width: 920px; }
+    .stage-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+    .stage-head h2 { margin: 2px 0 4px; font-size: 22px; }
+    .stage-head .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .desk-expand { margin-bottom: 12px; }
+    .lock-bar {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+      padding: 8px 12px; margin-bottom: 12px; border: 1px solid #6a5a38; border-radius: 10px; color: #ead7a8; background: #241f16;
+    }
+    .stage-nav {
+      display: flex; justify-content: space-between; gap: 8px; padding: 10px 24px 14px;
+      border-top: 1px solid var(--line); background: var(--bg);
+    }
+    .stage-nav button { max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .new-box {
       background: var(--bg-2); border: 1px dashed var(--accent); border-radius: 12px;
       padding: 14px; margin-bottom: 18px;
     }
-    .session {
-      background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 8px;
+
+    /* Blocos: começam fechados, com uma linha do que há dentro. */
+    details.block { border-top: 1px solid var(--line); }
+    details.block:last-of-type { border-bottom: 1px solid var(--line); }
+    details.block > summary {
+      cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: center; padding: 10px 0 10px 18px; position: relative;
     }
-    .session.is-locked { border-color: #3a342e; }
-    .session-head {
-      display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
-      padding: 12px 14px; cursor: pointer;
-    }
-    .session-head .who { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-    .session-head strong { font-size: 16px; }
-    .session-head .meta { color: var(--muted); font-size: 12px; }
-    .badge {
-      font-size: 11px; letter-spacing: .04em; text-transform: uppercase;
-      border: 1px solid var(--line); border-radius: 999px; padding: 3px 8px; color: var(--muted);
-    }
-    .badge.lock { color: #ead7a8; border-color: #6a5a38; }
-    .badge.edit { color: #c8e6cc; border-color: #3d6b58; }
-    .session-body { padding: 0 14px 16px; }
-    .session-sep {
-      height: 1px; background: linear-gradient(90deg, transparent, var(--line), transparent);
-      margin: 18px 8px;
-    }
-    .steps { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
-    .steps button {
-      padding: 5px 10px; font-size: 12px; border-radius: 999px;
-    }
-    .steps button.active { background: var(--accent); color: #1a140e; border-color: transparent; }
-    .step {
-      border: 1px solid var(--line); border-radius: 12px; padding: 4px 12px 12px; background: #1b1815;
-    }
-    .step > summary {
-      cursor: pointer; font-weight: 650; padding: 12px 4px; list-style: none;
-      display: flex; align-items: center; gap: 10px;
-    }
-    .step > summary::-webkit-details-marker { display: none; }
-    .step-n {
-      width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
-      font-size: 12px; background: var(--card); border: 1px solid var(--line); color: var(--accent);
-    }
-    .step .count { color: var(--muted); font-weight: 500; margin-left: auto; }
-    .inner-sep {
-      border: 0; border-top: 1px dashed var(--line); margin: 14px 0;
-    }
-    .inner-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; margin: 0 0 8px; }
+    details.block > summary::-webkit-details-marker { display: none; }
+    details.block > summary::before { content: '▸'; position: absolute; left: 0; top: 11px; color: var(--muted); }
+    details.block[open] > summary::before { content: '▾'; color: var(--accent); }
+    .block-head { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+    .block-head strong { font-size: 14px; color: var(--accent); }
+    .block-sub { color: var(--muted); font-size: 12px; }
+    .block-body { padding: 0 0 14px 18px; }
+    .tools { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tools button { padding: 4px 8px; font-size: 12px; }
+    .inner-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; margin: 16px 0 6px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
     .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
     .field.wide { grid-column: 1 / -1; }
@@ -98,23 +136,19 @@
       border-radius: 8px; padding: 8px 10px; font: inherit;
     }
     textarea { min-height: 88px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
-    .item {
-      background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin-top: 10px; padding: 0 10px 10px;
-    }
-    .item > summary {
-      cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 8px; align-items: center;
-      padding: 10px 0;
-    }
-    .item > summary::-webkit-details-marker { display: none; }
-    .item-head strong { font-size: 13px; color: var(--accent); }
-    .item-head .tools { display: flex; gap: 6px; flex-wrap: wrap; }
-    .item-head .tools button { padding: 4px 8px; font-size: 12px; }
     .check { display: flex; align-items: center; gap: 8px; color: var(--muted); padding-top: 18px; }
     .check input { width: auto; }
     .add { margin-top: 10px; }
     .nested { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
-    .session.is-locked input, .session.is-locked select, .session.is-locked textarea {
-      opacity: .85;
+    .is-locked input, .is-locked select, .is-locked textarea { opacity: .85; }
+
+    @media (max-width: 760px) {
+      body { height: auto; min-height: 100dvh; }
+      #app, #app.is-collapsed { grid-template-columns: minmax(0, 1fr); }
+      .desk { overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); }
+      .desk-resizer { display: none; }
+      .stage-scroll { overflow: visible; padding: 16px; }
+      .stage-nav { padding: 10px 16px 14px; }
     }
   </style>
 </head>
@@ -130,22 +164,27 @@
     </div>
   </header>
   <div id="banner"></div>
-  <main id="app"></main>
+  <div id="app"></div>
   <script>
     (() => {
       const app = document.getElementById('app');
       const banner = document.getElementById('banner');
       const pathEl = document.getElementById('file-path');
       const STEPS = [
-        { id: 'identidade', label: 'Identidade' },
-        { id: 'cenas', label: 'Cenas' },
-        { id: 'wiki', label: 'Wiki' },
-        { id: 'pessoas', label: 'Pessoas' },
-        { id: 'missoes', label: 'Missões' },
-        { id: 'terminal', label: 'Terminal' },
-        { id: 'handouts', label: 'Handouts' },
-        { id: 'lancer', label: 'Lancer' },
+        { id: 'geral', label: '⚙ Geral', sub: 'Sessão e campanha', hint: 'O que vale para a sessão inteira.' },
+        { id: 'cenas', label: 'Cenas', sub: 'Telas do /display', hint: 'Uma tela por cena: texto, cor, imagem ou CRT.' },
+        { id: 'wiki', label: 'Wiki', sub: 'Entradas do códice', hint: 'Lore, NPCs, eventos e mapas da campanha.' },
+        { id: 'pessoas', label: 'Pessoas', sub: 'Grupos e personagens', hint: 'Grupos e as fichas de quem joga.' },
+        { id: 'missoes', label: 'Missões', sub: 'Briefing e missões', hint: 'O cabeçalho do briefing e cada missão.' },
+        { id: 'terminal', label: 'Terminal', sub: 'Tema, comandos e arquivos', hint: 'O terminal do ITR: tela, comandos e arquivos.' },
+        { id: 'handouts', label: 'Handouts', sub: 'Props impressos', hint: 'Cartas, cartazes e fichas para imprimir.' },
+        { id: 'lancer', label: 'Lancer', sub: 'Missão e eventos', hint: 'Missão e eventos do lancer-briefings.' },
       ];
+      const KIND_LABEL = { text: 'texto', color: 'cor', image: 'imagem', crt: 'CRT' };
+      const WIDTH_KEY = 'session-kit.desk.width';
+      const COLLAPSED_KEY = 'session-kit.desk.collapsed';
+      const MIN_W = 320;
+      const DEFAULT_W = 460;
       const GENRES = ['fantasy', 'cosmic-horror', 'sci-fi', 'modern', 'post-apocalyptic', 'generic'];
       const ENTRY_TYPES = ['lore', 'npcs', 'characters', 'events', 'maps'];
       const QUEST_STATUS = ['ativa', 'pausada', 'parcial', 'concluida', 'falhou'];
@@ -158,6 +197,19 @@
       let sessions = [];
       let campaigns = [];
       let systems = [];
+      let cur = -1;
+      let curStep = 'geral';
+      let deskW = DEFAULT_W;
+      let collapsed = false;
+      try {
+        const w = Number(localStorage.getItem(WIDTH_KEY));
+        if (Number.isFinite(w) && w > 0) deskW = w;
+        collapsed = localStorage.getItem(COLLAPSED_KEY) === '1';
+      } catch (_) { /* sem armazenamento: menu no padrão */ }
+      function store(key, value) {
+        try { localStorage.setItem(key, value); } catch (_) { /* sem armazenamento */ }
+      }
+      function maxW() { return Math.max(MIN_W, Math.round(window.innerWidth * 0.6)); }
 
       function esc(s) {
         return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -225,7 +277,7 @@
         return `<button type="button" class="add" data-act="add" data-si="${si}" data-kind="${kind}">${esc(label)}</button>`;
       }
       function itemOpen(s, key) { return s.itemOpen[key] ? ' open' : ''; }
-      function stepOpen(s, id) { return s.stepsOpen[id] ? ' open' : ''; }
+      function subOf(parts) { return parts.filter((x) => x != null && x !== '').join(' · '); }
       function treatmentFields(kit, si, prefix) {
         const kind = get(kit, prefix + '.kind') || 'text';
         let extra = '';
@@ -242,17 +294,11 @@
         }
         return `<div class="grid">${field(kit, si, 'Tratamento', prefix + '.kind', { type: 'select', options: TREATMENTS })}</div><div class="grid">${extra}</div>`;
       }
-      function wrapItem(s, si, key, title, inner, kind, i) {
-        return `<details class="item" data-si="${si}" data-item="${esc(key)}"${itemOpen(s, key)}>
-          <summary class="item-head"><strong>${esc(title)}</strong>${tools(si, kind, i)}</summary>
-          ${inner}
-        </details>`;
-      }
-      function wrapStep(s, si, step, count, inner) {
-        const n = STEPS.findIndex((x) => x.id === step.id) + 1;
-        return `<details class="step" id="step-${si}-${step.id}" data-si="${si}" data-step="${step.id}"${stepOpen(s, step.id)}>
-          <summary><span class="step-n">${n}</span> ${esc(step.label)}${count != null ? `<span class="count">${count}</span>` : ''}</summary>
-          ${inner}
+      // Um bloco do palco. Começa fechado; `sub` diz o que há dentro.
+      function block(s, si, key, title, sub, inner, kind, i) {
+        return `<details class="block" data-si="${si}" data-item="${esc(key)}"${itemOpen(s, key)}>
+          <summary><span class="block-head"><strong>${esc(title)}</strong><span class="block-sub">${esc(sub || '—')}</span></span>${kind ? tools(si, kind, i) : ''}</summary>
+          <div class="block-body">${inner}</div>
         </details>`;
       }
       function systemOptions(current) {
@@ -268,7 +314,7 @@
           return `<option value="${esc(c.dir)}" ${c.dir === selected ? 'selected' : ''}>${esc(c.name + extra)}</option>`;
         }).join('');
       }
-      function sessionBody(s, si) {
+      function stepContent(s, si, step) {
         const kit = s.kit;
         const F = (label, path, opts) => field(kit, si, label, path, opts);
         const scenes = kit.scenes || [];
@@ -280,10 +326,6 @@
         const lancerEvents = (kit.lancer && kit.lancer.events) || [];
         const cmds = Object.entries((kit.terminal && kit.terminal.commands) || {});
         const files = (kit.terminal && kit.terminal.files) || [];
-        const pills = STEPS.map((st, n) =>
-          `<button type="button" data-act="goto-step" data-si="${si}" data-step="${st.id}" class="${s.stepsOpen[st.id] ? 'active' : ''}">${n + 1} ${esc(st.label)}</button>`
-        ).join('');
-
         const campPick = s.locked || campaigns.length === 0 ? '' : `<div class="grid">
             <label class="field wide"><span>Preencher de uma campanha existente</span>
               <select data-apply-campaign="${si}">
@@ -292,28 +334,27 @@
               </select>
             </label>
           </div>`;
-        const identidade = `
-          <p class="inner-label">Sessão</p>
+        const geral = block(s, si, 'geral.sessao', 'Sessão', 'ID, título, sistema, data, local e era', `
           <div class="grid">
             ${F('ID', 'id')}${F('Título', 'title')}${F('Sistema', 'system', { type: 'select', options: systemOptions(kit.system), optional: true })}
             ${F('Gênero', 'genre', { type: 'select', options: GENRES, optional: true })}
             ${F('Data', 'date')}${F('Local', 'location')}
             ${F('Ano da era', 'era.startYear', { type: 'number'})}${F('Rótulo da era', 'era.label')}
-          </div>
-          <hr class="inner-sep">
-          <p class="inner-label">Campanha</p>
+          </div>`) + block(s, si, 'geral.campanha', 'Campanha', 'Nome, tema, emoji, ordem e resumo', `
           ${campPick}
           <div class="grid">
             ${F('ID', 'campaign.id')}${F('Nome', 'campaign.name')}${F('Tema', 'campaign.theme')}
             ${F('Emoji', 'campaign.emoji')}${F('Ordem', 'campaign.order', { type: 'number' })}
             ${F('Resumo', 'campaign.summary', { type: 'textarea', rows: 3, wide: true })}
-          </div>`;
+          </div>`);
 
-        const cenas = scenes.map((sc, i) => wrapItem(s, si, 'scenes.' + i, sc.name || sc.id || ('Cena ' + (i + 1)),
+        const cenas = scenes.map((sc, i) => block(s, si, 'scenes.' + i, sc.name || sc.id || ('Cena ' + (i + 1)),
+          subOf([KIND_LABEL[(sc.treatment || {}).kind] || (sc.treatment || {}).kind, (sc.treatment || {}).variant, (sc.treatment || {}).theme, (sc.treatment || {}).label]),
           `<div class="grid">${F('ID', 'scenes.' + i + '.id')}${F('Nome', 'scenes.' + i + '.name')}</div>${treatmentFields(kit, si, 'scenes.' + i + '.treatment')}`,
           'scenes', i)).join('') + addBtn(si, 'scenes', '+ Cena');
 
-        const wiki = entries.map((sc, i) => wrapItem(s, si, 'entries.' + i, sc.title || ('Entrada ' + (i + 1)),
+        const wiki = entries.map((sc, i) => block(s, si, 'entries.' + i, sc.title || ('Entrada ' + (i + 1)),
+          subOf([sc.type, sc.slug, sc.status]),
           `<div class="grid">
             ${F('Tipo', 'entries.' + i + '.type', { type: 'select', options: ENTRY_TYPES })}
             ${F('Slug', 'entries.' + i + '.slug')}${F('Título', 'entries.' + i + '.title')}
@@ -326,10 +367,13 @@
             ${F('Texto', 'entries.' + i + '.body', { type: 'textarea', rows: 6, wide: true })}
           </div>`, 'entries', i)).join('') + addBtn(si, 'entries', '+ Entrada');
 
-        const pessoas = parties.map((sc, i) => wrapItem(s, si, 'parties.' + i, 'Grupo · ' + (sc.name || sc.id || String(i + 1)),
+        const pessoas = `<p class="inner-label">Grupos</p>` + parties.map((sc, i) => block(s, si, 'parties.' + i, 'Grupo · ' + (sc.name || sc.id || String(i + 1)),
+          subOf([sc.id, party.filter((c) => c.partyId && c.partyId === sc.id).length + ' personagem(ns)']),
           `<div class="grid">${F('ID', 'parties.' + i + '.id')}${F('Nome', 'parties.' + i + '.name')}</div>`,
           'parties', i)).join('') + addBtn(si, 'parties', '+ Grupo') +
-          party.map((sc, i) => wrapItem(s, si, 'party.' + i, sc.name || ('Personagem ' + (i + 1)),
+          `<p class="inner-label">Personagens</p>` +
+          party.map((sc, i) => block(s, si, 'party.' + i, sc.name || ('Personagem ' + (i + 1)),
+            subOf([sc.race, (sc.classes || []).map((c) => c.name).filter(Boolean).join('/'), sc.level != null ? 'nível ' + sc.level : '', sc.player]),
             `<div class="grid">
               ${F('ID', 'party.' + i + '.id')}${F('Nome', 'party.' + i + '.name')}${F('Raça', 'party.' + i + '.race')}
               ${F('Nível', 'party.' + i + '.level', { type: 'number' })}${F('Grupo (partyId)', 'party.' + i + '.partyId')}
@@ -352,15 +396,17 @@
               ${s.locked ? '' : `<button type="button" class="add" data-act="add-class" data-si="${si}" data-i="${i}">+ Classe</button>`}
             </div>`, 'party', i)).join('') + addBtn(si, 'party', '+ Personagem');
 
-        const missoes = `
+        const brief = kit.briefing || {};
+        const missoes = block(s, si, 'briefing', 'Briefing', subOf([brief.kind, brief.guildName, brief.crest]) || 'Tipo, guilda, boot e brasão', `
           <div class="grid">
             ${F('Tipo do briefing', 'briefing.kind', { type: 'select', options: ['guild', 'lancer'], optional: true })}
             ${F('Nome da guilda / esquadrão', 'briefing.guildName')}
             ${F('Título de boot', 'briefing.bootTitle')}
             ${F('Brasão', 'briefing.crest', { type: 'select', options: ['fleur', 'd20'], optional: true })}
-          </div>
-          <hr class="inner-sep">` +
-          quests.map((sc, i) => wrapItem(s, si, 'quests.' + i, sc.title || ('Missão ' + (i + 1)),
+          </div>`) +
+          `<p class="inner-label">Missões</p>` +
+          quests.map((sc, i) => block(s, si, 'quests.' + i, sc.title || ('Missão ' + (i + 1)),
+            subOf([sc.status, sc.reward]),
             `<div class="grid">
               ${F('ID', 'quests.' + i + '.id')}${F('Título', 'quests.' + i + '.title')}
               ${F('Status', 'quests.' + i + '.status', { type: 'select', options: QUEST_STATUS, optional: true })}
@@ -372,22 +418,24 @@
               ${F('Glifo', 'quests.' + i + '.guild.glyph')}
             </div>`, 'quests', i)).join('') + addBtn(si, 'quests', '+ Missão');
 
-        const terminal = `
+        const term = kit.terminal || {};
+        const terminal = block(s, si, 'terminal', 'Tela', subOf([term.theme, term.name]) || 'Tema, ID, nome, cabeçalho e MOTD', `
           <div class="grid">
             ${F('Tema', 'terminal.theme')}${F('ID', 'terminal.id')}${F('Nome', 'terminal.name')}
             ${F('Cabeçalho', 'terminal.header')}
             ${F('MOTD (uma linha por linha)', 'terminal.motd', { type: 'textarea', lines: true, rows: 6, wide: true })}
-          </div>
-          <hr class="inner-sep">
-          <p class="inner-label">Comandos</p>` +
-          cmds.map(([name], i) => wrapItem(s, si, 'cmd.' + i, 'Comando · ' + name,
+          </div>`) +
+          `<p class="inner-label">Comandos</p>` +
+          cmds.map(([name, lines], i) => block(s, si, 'cmd.' + i, 'Comando · ' + name,
+            (lines || []).length + ' linha(s)',
             `<div class="grid">
               <label class="field"><span>Nome</span><input data-act="cmd-name" data-si="${si}" data-i="${i}" value="${esc(name)}"${s.locked ? ' disabled' : ''}></label>
               ${F('Resposta (linhas)', 'terminal.commands.' + name, { type: 'textarea', lines: true, rows: 5, wide: true })}
             </div>`, 'cmds', i)).join('') +
           (s.locked ? '' : `<button type="button" class="add" data-act="add-cmd" data-si="${si}">+ Comando</button>`) +
-          `<hr class="inner-sep"><p class="inner-label">Arquivos</p>` +
-          files.map((sc, i) => wrapItem(s, si, 'tfiles.' + i, 'Arquivo · ' + (sc.path || String(i + 1)),
+          `<p class="inner-label">Arquivos</p>` +
+          files.map((sc, i) => block(s, si, 'tfiles.' + i, 'Arquivo · ' + (sc.path || String(i + 1)),
+            subOf([sc.locked ? 'travado' : 'aberto', sc.password ? 'senha' : '', sc.crackDC != null ? 'DC ' + sc.crackDC : '', sc.tracer ? 'tracer' : '']),
             `<div class="grid">
               ${F('Caminho', 'terminal.files.' + i + '.path')}${F('Senha', 'terminal.files.' + i + '.password')}
               ${F('DC do crack', 'terminal.files.' + i + '.crackDC', { type: 'number' })}
@@ -399,7 +447,8 @@
             </div>`, 'tfiles', i)).join('') +
           (s.locked ? '' : `<button type="button" class="add" data-act="add-file" data-si="${si}">+ Arquivo</button>`);
 
-        const hand = handouts.map((sc, i) => wrapItem(s, si, 'handouts.' + i, sc.title || sc.slug || ('Handout ' + (i + 1)),
+        const hand = handouts.map((sc, i) => block(s, si, 'handouts.' + i, sc.title || sc.slug || ('Handout ' + (i + 1)),
+          subOf([sc.template, sc.size, sc.from ? 'de ' + sc.from : '']),
           `<div class="grid">
             ${F('Modelo', 'handouts.' + i + '.template', { type: 'select', options: HANDOUTS })}
             ${F('Slug', 'handouts.' + i + '.slug')}${F('Título', 'handouts.' + i + '.title')}
@@ -410,14 +459,16 @@
             ${F('Corpo', 'handouts.' + i + '.body', { type: 'textarea', rows: 7, wide: true })}
           </div>`, 'handouts', i)).join('') + addBtn(si, 'handouts', '+ Handout');
 
-        const lancer = `
+        const mission = (kit.lancer && kit.lancer.mission) || {};
+        const lancer = block(s, si, 'lancer.mission', 'Missão', subOf([mission.name, mission.status]) || 'Slug, nome, status e texto', `
           <div class="grid">
             ${F('Slug da missão', 'lancer.mission.slug')}${F('Nome', 'lancer.mission.name')}
             ${F('Status', 'lancer.mission.status')}
             ${F('Texto (markdown)', 'lancer.mission.body', { type: 'textarea', rows: 10, wide: true })}
-          </div>
-          <hr class="inner-sep">` +
-          lancerEvents.map((sc, i) => wrapItem(s, si, 'levents.' + i, 'Evento · ' + (sc.name || sc.slug || String(i + 1)),
+          </div>`) +
+          `<p class="inner-label">Eventos</p>` +
+          lancerEvents.map((sc, i) => block(s, si, 'levents.' + i, 'Evento · ' + (sc.name || sc.slug || String(i + 1)),
+            subOf([sc.status, sc.slug]),
             `<div class="grid">
               ${F('Slug', 'lancer.events.' + i + '.slug')}${F('Nome', 'lancer.events.' + i + '.name')}
               ${F('Status', 'lancer.events.' + i + '.status')}
@@ -425,26 +476,20 @@
             </div>`, 'levents', i)).join('') +
           (s.locked ? '' : `<button type="button" class="add" data-act="add-levent" data-si="${si}">+ Evento Lancer</button>`);
 
-        const blocks = [
-          wrapStep(s, si, STEPS[0], null, identidade),
-          wrapStep(s, si, STEPS[1], scenes.length, cenas),
-          wrapStep(s, si, STEPS[2], entries.length, wiki),
-          wrapStep(s, si, STEPS[3], party.length, pessoas),
-          wrapStep(s, si, STEPS[4], quests.length, missoes),
-          wrapStep(s, si, STEPS[5], files.length, terminal),
-          wrapStep(s, si, STEPS[6], handouts.length, hand),
-          wrapStep(s, si, STEPS[7], lancerEvents.length, lancer),
-        ].join('<div class="session-sep"></div>');
-
-        return `<div class="session-body">
-          <nav class="steps">${pills}</nav>
-          ${s.locked ? '' : `<div class="actions" style="display:flex;gap:8px;margin-bottom:12px">
-            <button type="button" data-act="save" data-si="${si}">Salvar YAML</button>
-            <button type="button" class="primary" data-act="compile" data-si="${si}">Salvar e compilar</button>
-            <button type="button" class="ghost" data-act="lock" data-si="${si}">Travar</button>
-          </div>`}
-          ${blocks}
-        </div>`;
+        const byStep = { geral, cenas, wiki, pessoas, missoes, terminal, handouts: hand, lancer };
+        return byStep[step] || '';
+      }
+      function stepCount(kit, step) {
+        const n = {
+          cenas: (kit.scenes || []).length,
+          wiki: (kit.entries || []).length,
+          pessoas: (kit.party || []).length,
+          missoes: (kit.quests || []).length,
+          terminal: ((kit.terminal && kit.terminal.files) || []).length,
+          handouts: (kit.handouts || []).length,
+          lancer: ((kit.lancer && kit.lancer.events) || []).length,
+        }[step];
+        return n == null ? '' : String(n);
       }
       function hydrate(raw) {
         return {
@@ -453,8 +498,7 @@
           kit: raw.kit || {},
           warning: raw.warning,
           locked: raw.existed !== false && !raw.startUnlocked,
-          open: !!raw.startUnlocked,
-          stepsOpen: { identidade: true },
+          startUnlocked: !!raw.startUnlocked,
           itemOpen: {},
         };
       }
@@ -494,33 +538,126 @@
           }
           groups[seen.get(camp)].indices.push(si);
         });
-        const cards = groups.map((g) => {
+        const menu = groups.map((g) => {
           const items = g.indices.map((si) => {
             const s = sessions[si];
             const kit = s.kit;
             const title = kit.title || kit.id || s.rel;
             const sys = kit.system ? systems.find((x) => x.id === kit.system)?.label || kit.system : '';
-            return `<article class="session ${s.locked ? 'is-locked' : ''} ${s.open ? 'is-open' : ''}" data-si="${si}">
-              <div class="session-head" data-act="toggle-session" data-si="${si}">
-                <div class="who">
+            const steps = si !== cur ? '' : `<ul class="steps">${STEPS.map((st) => {
+              const n = stepCount(kit, st.id);
+              return `<li><button type="button" data-act="goto-step" data-si="${si}" data-step="${st.id}" class="${st.id === curStep ? 'active' : ''}">
+                <span><span class="step-title">${esc(st.label)}</span><span class="step-sub">${esc(st.sub)}</span></span>
+                ${n ? `<span class="count">${n}</span>` : ''}
+              </button></li>`;
+            }).join('')}</ul>`;
+            return `<button type="button" class="sess ${si === cur ? 'active' : ''}" data-act="pick-session" data-si="${si}">
+                <span class="who">
                   <strong>${esc(title)}</strong>
                   <span class="meta">${esc([sys, s.rel].filter(Boolean).join(' · '))}</span>
-                </div>
+                </span>
                 <span class="badge ${s.locked ? 'lock' : 'edit'}">${s.locked ? 'Travada' : 'Editando'}</span>
-                ${s.locked
-                  ? `<button type="button" class="primary" data-act="unlock" data-si="${si}">Editar</button>`
-                  : ''}
-              </div>
-              ${s.open ? sessionBody(s, si) : ''}
-            </article>`;
+              </button>${steps}`;
           }).join('');
-          const head = mode === 'catalog' && groups.length > 1
-            ? `<p class="inner-label">${esc(g.name)}</p>`
-            : '';
+          const head = mode === 'catalog' ? `<p class="camp-label">${esc(g.name)}</p>` : '';
           return head + items;
-        }).join('<div class="session-sep"></div>');
-        app.innerHTML = `<p class="hint">Sessões antigas ficam travadas até você apertar Editar. Nova sessão lista as campanhas e sistemas já usados nesta pasta.</p>${newBox}${cards || '<p class="hint">Nenhum kit.yaml neste diretório.</p>'}`;
+        }).join('');
+
+        const s = sessions[cur];
+        const at = Math.max(0, STEPS.findIndex((x) => x.id === curStep));
+        const step = STEPS[at];
+        const prev = at > 0 ? STEPS[at - 1] : null;
+        const next = at < STEPS.length - 1 ? STEPS[at + 1] : null;
+        const expand = collapsed ? '<button type="button" class="desk-expand" data-act="expand">▸ Menu</button>' : '';
+        let stage;
+        if (!s) {
+          stage = `<div class="stage-scroll"><div class="stage-inner">${expand}${newBox}
+            <p class="hint">${sessions.length ? 'Escolha uma sessão no menu.' : 'Nenhum kit.yaml neste diretório.'}</p></div></div>`;
+        } else {
+          const title = s.kit.title || s.kit.id || s.rel;
+          const actions = s.locked
+            ? `<button type="button" class="primary" data-act="unlock" data-si="${cur}">Editar</button>`
+            : `<button type="button" data-act="save" data-si="${cur}">Salvar YAML</button>
+               <button type="button" class="primary" data-act="compile" data-si="${cur}">Salvar e compilar</button>
+               <button type="button" class="ghost" data-act="lock" data-si="${cur}">Travar</button>`;
+          stage = `<div class="stage-scroll"><div class="stage-inner ${s.locked ? 'is-locked' : ''}">
+              ${expand}${newBox}
+              <div class="stage-head">
+                <div>
+                  <p class="kicker">Passo ${at + 1} de ${STEPS.length} · ${esc(title)}</p>
+                  <h2>${esc(step.label)}</h2>
+                  <p class="field-hint">${esc(step.hint)}</p>
+                </div>
+                <div class="actions">${actions}</div>
+              </div>
+              ${s.locked ? '<div class="lock-bar">Travada: aperte Editar para mexer.</div>' : ''}
+              ${stepContent(s, cur, step.id)}
+            </div></div>
+            <nav class="stage-nav" aria-label="Passos">
+              <button type="button" ${prev ? `data-act="goto-step" data-si="${cur}" data-step="${prev.id}"` : 'disabled'}>← ${esc(prev ? prev.label : 'Início')}</button>
+              <button type="button" class="primary" ${next ? `data-act="goto-step" data-si="${cur}" data-step="${next.id}"` : 'disabled'}>${esc(next ? next.label : 'Fim')} →</button>
+            </nav>`;
+        }
+
+        app.className = collapsed ? 'is-collapsed' : '';
+        app.style.setProperty('--desk-w', Math.min(deskW, maxW()) + 'px');
+        app.innerHTML = (collapsed ? '' : `<aside class="desk">
+            <div class="desk-head">
+              <div><p class="kicker">${mode === 'catalog' ? 'Catálogo' : 'Sessão'}</p><h1>Sessões</h1></div>
+              <button type="button" class="ghost desk-collapse" data-act="collapse" title="Recolher o menu">◂ Recolher</button>
+            </div>
+            <p class="hint">Sessões antigas ficam travadas até você apertar Editar. Nova sessão lista as campanhas e sistemas já usados nesta pasta.</p>
+            ${menu}
+          </aside>
+          <div class="desk-resizer" role="separator" aria-orientation="vertical" aria-label="Largura do menu" tabindex="0"></div>`) +
+          `<section class="stage">${stage}</section>`;
         bind();
+      }
+      // Redesenha sem perder a rolagem do menu e do palco.
+      function rerender(resetStage) {
+        const desk = app.querySelector('.desk');
+        const scroll = app.querySelector('.stage-scroll');
+        const dy = desk ? desk.scrollTop : 0;
+        const sy = scroll && !resetStage ? scroll.scrollTop : 0;
+        render();
+        const d2 = app.querySelector('.desk');
+        const s2 = app.querySelector('.stage-scroll');
+        if (d2) d2.scrollTop = dy;
+        if (s2) s2.scrollTop = sy;
+        if (resetStage) window.scrollTo(0, 0);
+      }
+      function bindResizer() {
+        const handle = app.querySelector('.desk-resizer');
+        if (!handle) return;
+        const setW = (w) => {
+          deskW = Math.min(maxW(), Math.max(MIN_W, w));
+          app.style.setProperty('--desk-w', deskW + 'px');
+        };
+        handle.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          const left = app.getBoundingClientRect().left;
+          handle.setPointerCapture(e.pointerId);
+          const move = (ev) => setW(ev.clientX - left);
+          const stop = (ev) => {
+            handle.releasePointerCapture(ev.pointerId);
+            handle.removeEventListener('pointermove', move);
+            handle.removeEventListener('pointerup', stop);
+            store(WIDTH_KEY, String(deskW));
+          };
+          handle.addEventListener('pointermove', move);
+          handle.addEventListener('pointerup', stop);
+        });
+        handle.addEventListener('keydown', (e) => {
+          if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+          e.preventDefault();
+          const step = e.shiftKey ? 60 : 20;
+          setW(deskW + (e.key === 'ArrowRight' ? step : -step));
+          store(WIDTH_KEY, String(deskW));
+        });
+        handle.addEventListener('dblclick', () => {
+          setW(DEFAULT_W);
+          store(WIDTH_KEY, String(deskW));
+        });
       }
       function bind() {
         app.querySelectorAll('[data-path]').forEach((el) => {
@@ -530,15 +667,13 @@
         app.querySelectorAll('[data-act]').forEach((el) => {
           el.addEventListener('click', onAct);
         });
-        app.querySelectorAll('details[data-step], details[data-item]').forEach((el) => {
+        app.querySelectorAll('details[data-item]').forEach((el) => {
           el.addEventListener('toggle', () => {
-            const si = Number(el.dataset.si);
-            const s = sessions[si];
-            if (!s) return;
-            if (el.dataset.step) s.stepsOpen[el.dataset.step] = el.open;
-            if (el.dataset.item) s.itemOpen[el.dataset.item] = el.open;
+            const s = sessions[Number(el.dataset.si)];
+            if (s) s.itemOpen[el.dataset.item] = el.open;
           });
         });
+        bindResizer();
         const campSel = document.getElementById('new-camp');
         if (campSel) {
           campSel.addEventListener('change', () => {
@@ -561,9 +696,7 @@
             if (camp.order != null) s.kit.campaign.order = camp.order;
             if (camp.system) s.kit.system = camp.system;
             if (camp.genre) s.kit.genre = camp.genre;
-            const y = window.scrollY;
-            render();
-            window.scrollTo(0, y);
+            rerender();
           });
         });
       }
@@ -591,9 +724,7 @@
           else if (value === 'color') set(kit, prefix, { kind: 'color', color: '#222222' });
           else if (value === 'image') set(kit, prefix, { kind: 'image', src: '' });
           else if (value === 'crt') set(kit, prefix, { kind: 'crt', lines: [] });
-          const y = window.scrollY;
-          render();
-          window.scrollTo(0, y);
+          rerender();
           return;
         }
         set(kit, path, value);
@@ -627,21 +758,24 @@
         const act = btn.dataset.act;
         const si = Number(btn.dataset.si);
         const s = sessions[si];
-        const y = window.scrollY;
-        if (act === 'toggle-session') {
-          if (s) s.open = !s.open;
+        if (act === 'collapse' || act === 'expand') {
+          collapsed = act === 'collapse';
+          store(COLLAPSED_KEY, collapsed ? '1' : '0');
+          render();
+          return;
+        } else if (act === 'pick-session') {
+          if (si !== cur) { cur = si; curStep = 'geral'; showNew = false; }
+          rerender(true);
+          return;
         } else if (act === 'unlock') {
-          if (s) { s.locked = false; s.open = true; s.stepsOpen.identidade = true; }
+          if (s) { s.locked = false; cur = si; }
         } else if (act === 'lock') {
           if (s) s.locked = true;
         } else if (act === 'goto-step') {
           if (!s) return;
-          s.open = true;
-          s.stepsOpen[btn.dataset.step] = true;
-          render();
-          window.scrollTo(0, y);
-          const el = document.getElementById('step-' + si + '-' + btn.dataset.step);
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          cur = si;
+          curStep = btn.dataset.step;
+          rerender(true);
           return;
         } else if (act === 'save' || act === 'compile') {
           if (!s || s.locked) return;
@@ -675,8 +809,9 @@
             const data = await api('POST', '/api/kits', body);
             const created = hydrate(data.session);
             created.locked = false;
-            created.open = true;
             sessions.push(created);
+            cur = sessions.length - 1;
+            curStep = 'geral';
             if (created.kit && created.kit.campaign) {
               const dir = body.dir.split('/')[0];
               if (!campaigns.some((c) => c.dir === dir)) {
@@ -696,8 +831,7 @@
         } else if (act === 'cmd-name') {
           return;
         } else if (!s || s.locked) {
-          render();
-          window.scrollTo(0, y);
+          rerender();
           return;
         } else {
           const kit = s.kit;
@@ -749,8 +883,7 @@
             kit.lancer.events.push({ slug: '', name: '', body: '' });
           }
         }
-        render();
-        window.scrollTo(0, y);
+        rerender();
       }
       app.addEventListener('change', (e) => {
         const el = e.target;
@@ -764,9 +897,7 @@
         if (!oldName || !next || next === oldName) return;
         s.kit.terminal.commands[next] = s.kit.terminal.commands[oldName];
         delete s.kit.terminal.commands[oldName];
-        const y = window.scrollY;
-        render();
-        window.scrollTo(0, y);
+        rerender();
       });
       document.getElementById('btn-new').addEventListener('click', () => {
         if (mode === 'single') {
@@ -774,7 +905,7 @@
           return;
         }
         showNew = !showNew;
-        render();
+        rerender(true);
       });
       document.getElementById('btn-quit').addEventListener('click', async () => {
         try { await api('POST', '/api/shutdown'); } catch (_) {}
@@ -784,6 +915,8 @@
         mode = data.mode || 'single';
         pathEl.textContent = data.root || '';
         sessions = (data.sessions || []).map(hydrate);
+        const start = sessions.findIndex((s) => s.startUnlocked);
+        cur = start >= 0 ? start : sessions.length ? 0 : -1;
         campaigns = data.campaigns || [];
         systems = data.systems || [];
         const warns = sessions.filter((s) => s.warning);
