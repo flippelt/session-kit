@@ -69,9 +69,12 @@ session-kit new minha-campanha/encontro-01
 ```
 
 `edit` abre o navegador em `127.0.0.1`. Se o caminho é uma **pasta** (ou
-omitido, e existe `kits/`), o catálogo lista todas as sessões agrupadas por
-campanha: as antigas ficam **travadas** até o botão Editar; cada sessão e
-cada item é colapsável, separado em etapas. **Nova sessão** escolhe uma
+omitido, e existe `kits/`), o menu à esquerda lista todas as sessões
+agrupadas por campanha: as antigas ficam **travadas** até o botão Editar. A
+sessão escolhida abre as etapas, a começar pelo **⚙ Geral** (sessão e
+campanha); o centro mostra só os blocos da etapa, fechados, com uma linha do
+que há dentro, e ← / → passa de uma etapa à outra. O menu pode ser arrastado
+para mudar a largura ou recolhido. **Nova sessão** escolhe uma
 campanha já existente (e herda nome, sistema, gênero e era) ou cria outra;
 o sistema é uma lista dos SRDs do GM Control Room mais os já usados na
 pasta. `new` cria `<dir>/kit.yaml` (com a mesma herança, se houver irmãos)
