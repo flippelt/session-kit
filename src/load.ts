@@ -5,11 +5,11 @@ import { KitError } from './errors.js'
 import { KitSchema, type Kit } from './schema.js'
 
 function translateIssue(issue: ZodIssue): string {
-  if (issue.code === 'invalid_type' && 'received' in issue && issue.received === 'undefined') {
-    return 'obrigatório'
-  }
-  if (issue.code === 'invalid_type' && 'expected' in issue) {
-    return `esperado ${String(issue.expected)}, recebido ${String(issue.received)}`
+  if (issue.code === 'invalid_type') {
+    // O zod 4 não expõe mais `received`; ele só aparece na mensagem padrão.
+    const received = /received (\S+)$/.exec(issue.message)?.[1]
+    if (received === 'undefined') return 'obrigatório'
+    if (received) return `esperado ${String(issue.expected)}, recebido ${received}`
   }
   return issue.message
 }
